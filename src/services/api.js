@@ -1,8 +1,16 @@
 import axios from 'axios';
 
+// 1. Đọc biến môi trường VITE
+// VITE_API_BASE_URL sẽ được lấy từ Vercel (khi deploy)
+// Nó sẽ là 'undefined' khi bạn chạy 'npm run dev' (local)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 // Tạo axios instance dùng chung
 const api = axios.create({
-  baseURL: '/api',
+  // 2. SỬA LỖI TẠI ĐÂY:
+  // - Nếu API_BASE_URL được định nghĩa (trên Vercel), dùng nó (vd: https://api.waterbase.click)
+  // - Nếu không (chạy local), dùng '/api' để proxy của Vite (trong vite.config.js) hoạt động.
+  baseURL: API_BASE_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -41,6 +49,7 @@ api.interceptors.response.use(
 // Helper để download file
 export const downloadFile = async (url, filename) => {
   try {
+    // Sửa: Đảm bảo helper cũng dùng instance 'api' đã cấu hình
     const response = await api.get(url, { responseType: 'blob' });
     const blob = new Blob([response.data]);
     const url_blob = window.URL.createObjectURL(blob);
@@ -58,4 +67,3 @@ export const downloadFile = async (url, filename) => {
 };
 
 export default api;
-
