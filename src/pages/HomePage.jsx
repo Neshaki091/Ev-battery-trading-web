@@ -10,19 +10,21 @@ function HomePage() {
 
   useEffect(() => {
     loadListings();
-  }, []);
+  }, []); // <-- SỬA ĐỔI: Gỡ [sortBy] đi để tránh gọi 2 lần lúc tải trang
 
   const loadListings = async () => {
     try {
       setLoading(true);
       const q = encodeURIComponent(searchQuery.trim());
-      const path = `/search/listings/?q=${q}&sort_by=${sortBy}&limit=12`;
+      // Sửa sortBy thành sort_by để khớp với API
+      const path = `/search/listings/?q=${q}&sort_by=${sortBy}&limit=12`; 
 
       let data;
       try {
         data = await api.get(path);
       } catch (err) {
         // Fallback to public listings
+        console.warn('Search API failed, falling back to public listings.'); // Thêm log
         data = await api.get('/listings/public');
       }
 
@@ -95,9 +97,11 @@ function HomePage() {
           <div className="grid grid-1 grid-md-2 grid-lg-4">
             {listings.map((listing) => {
               const listingId = listing._id || listing.id;
-              const imageUrl = listing.images && listing.images[0]
-                ? listing.images[0]
-                : `https://picsum.photos/seed/${listingId}/600/300`;
+              
+              // === SỬA ĐỔI LOGIC HÌNH ẢNH ===
+              // 1. Chỉ lấy URL nếu tồn tại
+              const imageUrl = listing.images && listing.images[0]; 
+
               return (
                 <Link
                   key={listingId}
@@ -105,11 +109,29 @@ function HomePage() {
                   className="product-card"
                 >
                   <div className="product-image">
-                    <img
-                      src={imageUrl}
-                      alt={listing.title || 'Listing Image'}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                    {/* 2. Dùng conditional rendering (giống ProductDetailPage.js) */}
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={listing.title || 'Listing Image'}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      // 3. Hiển thị ô màu xám nếu không có ảnh
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#f3f4f6',
+                          color: '#9ca3af',
+                        }}
+                      >
+                        Không có ảnh
+                      </div>
+                    )}
                   </div>
                   <div className="product-info">
                     <h3 className="product-title">
@@ -133,4 +155,3 @@ function HomePage() {
 }
 
 export default HomePage;
-

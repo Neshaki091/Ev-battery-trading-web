@@ -6,12 +6,22 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // Proxy này CHỈ DÙNG CHO 'npm run dev' (local)
-      // Nó sẽ chuyển tiếp request từ localhost:xxxx/api -> https://api.waterbase.click/api
       '/api': {
+        // Thử HTTPS trước (như trong file HTML), nếu không được thì đổi về HTTP
         target: 'https://api.waterbase.click',
         changeOrigin: true,
         secure: true,
+        ws: true,
+        // Không rewrite path để giữ nguyên /api
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, res) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            // Đảm bảo không redirect
+            proxyReq.setHeader('Host', 'api.waterbase.click');
+          });
+        },
       },
     },
     cors: true,

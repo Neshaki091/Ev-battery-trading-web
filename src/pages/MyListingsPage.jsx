@@ -38,7 +38,7 @@ function MyListingsPage() {
     try {
       await api.delete(`/listings/${listingId}`);
       alert('Tin đăng đã được xóa.');
-      fetchMyListings();
+      fetchMyListings(); // Tải lại danh sách sau khi xóa
     } catch (err) {
       alert('Lỗi: ' + (err.response?.data?.message || err.message));
     }
@@ -78,17 +78,36 @@ function MyListingsPage() {
           <div className="grid grid-1 grid-md-2 grid-lg-3">
             {listings.map((listing) => {
               const listingId = listing._id || listing.id;
-              const imageUrl = listing.images && listing.images[0]
-                ? listing.images[0]
-                : `https://picsum.photos/seed/${listingId}/600/300`;
+
+              // === SỬA ĐỔI LOGIC HÌNH ẢNH (Bỏ Picsum) ===
+              const imageUrl = listing.images && listing.images[0];
+
               return (
                 <div key={listingId} className="product-card">
                   <div className="product-image">
-                    <img
-                      src={imageUrl}
-                      alt={listing.title || 'Listing Image'}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                    {/* 2. Dùng conditional rendering */}
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={listing.title || 'Listing Image'}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      // 3. Hiển thị ô màu xám nếu không có ảnh
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#f3f4f6',
+                          color: '#9ca3af',
+                        }}
+                      >
+                        Không có ảnh
+                      </div>
+                    )}
                   </div>
                   <div className="product-info">
                     <h3 className="product-title">
@@ -127,4 +146,3 @@ function MyListingsPage() {
 }
 
 export default MyListingsPage;
-

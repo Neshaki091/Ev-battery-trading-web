@@ -7,22 +7,55 @@ function CartPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // === SỬA LỖI 2: LOGIC MICROSERVICE ===
+  // Chúng ta phải gọi 2 API: 1 sang Transaction, 1 sang Listing
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
         setLoading(true);
-        // Endpoint theo evb_trading_platform_frontend.html - sử dụng transactions/history
+        // 1. Lấy lịch sử giao dịch (chỉ chứa ID)
         const response = await api.get('/transactions/history');
         const orders = response.data?.data || response.data || [];
-        // Chuyển đổi orders thành cart items format
-        const items = orders.map(order => ({
-          id: order._id || order.id,
-          name: order.listingTitle || 'Sản phẩm',
-          price: order.price || 0,
-          quantity: 1,
-          image: order.listingImage || null,
-          status: order.status
-        }));
+
+        if (orders.length === 0) {
+          setCartItems([]);
+          setLoading(false);
+          return;
+        }
+
+        // 2. Trích xuất tất cả các listingId duy nhất
+        const listingIds = [...new Set(orders.map(order => order.listingId))];
+
+        // 3. Gọi song song sang Listing Service để lấy thông tin chi tiết
+        const listingPromises = listingIds.map(id =>
+          api.get(`/listings/${id}`).catch(err => null) // Bỏ qua nếu tin đăng bị xóa
+        );
+        const listingResponses = await Promise.all(listingPromises);
+
+        // 4. Tạo một "Map" (từ điển) để tra cứu thông tin listing
+        const listingsMap = {};
+        listingResponses.forEach(res => {
+          if (res && res.data) {
+            // Dữ liệu có thể nằm trong .data.data hoặc .data
+            const listingData = res.data.data || res.data;
+            listingsMap[listingData._id] = listingData;
+          }
+        });
+
+        // 5. Gộp thông tin từ 2 service lại
+        const items = orders.map(order => {
+          const listingDetail = listingsMap[order.listingId]; // Tra cứu
+          return {
+            id: order._id || order.id,
+            name: listingDetail?.title || 'Tin đăng đã bị xóa', // Lấy title từ Listing
+            price: order.price || 0, // Lấy price từ Transaction (an toàn)
+            quantity: 1,
+            image: listingDetail?.images?.[0] || null, // Lấy ảnh từ Listing
+            status: order.status
+          };
+        });
+        // === KẾT THÚC SỬA LỖI 2 ===
+
         setCartItems(items);
       } catch (err) {
         setError(err.message);
@@ -33,10 +66,9 @@ function CartPage() {
     };
 
     fetchTransactions();
-  }, []);
+  }, []); // Chỉ chạy 1 lần khi load
 
   const handleRemoveItem = async (itemId) => {
-    // Transactions không thể xóa, chỉ có thể thanh toán
     alert('Giao dịch không thể xóa. Vui lòng liên hệ admin nếu cần hủy.');
   };
 
@@ -44,21 +76,22 @@ function CartPage() {
     try {
       await api.post(`/transactions/${orderId}/payment/`);
       alert('Thanh toán thành công');
-      // Reload transactions
-      const response = await api.get('/transactions/history');
-      const orders = response.data?.data || response.data || [];
-      const items = orders.map(order => ({
-        id: order._id || order.id,
-        name: order.listingTitle || 'Sản phẩm',
-        price: order.price || 0,
-        quantity: 1,
-        image: order.listingImage || null,
-        status: order.status
-      }));
-      setCartItems(items);
+
+      // Sửa: Cập nhật trạng thái ngay trên UI mà không cần gọi lại API
+      setCartItems(currentItems =>
+        currentItems.map(item =>
+          item.id === orderId ? { ...item, status: 'paid' } : item
+        )
+      );
+
     } catch (err) {
-      console.error('Error paying order:', err);
-      alert('Không thể thanh toán: ' + (err.response?.data?.message || err.message));
+      // === SỬA LỖI 1: HIỂN THỊ ĐÚNG TIN NHẮN LỖI ===
+      console.error('Error paying order object:', err);
+      // Backend gửi lỗi trong 'error', không phải 'message'
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
+      console.error('Lỗi từ Backend:', errorMessage);
+      alert('Không thể thanh toán: ' + errorMessage);
+      // === KẾT THÚC SỬA LỖI 1 ===
     }
   };
 
@@ -68,11 +101,9 @@ function CartPage() {
         responseType: 'blob',
       });
 
-      // Create blob URL
+      // ... (Logic tải file PDF của bạn ở đây là đúng, giữ nguyên) ...
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
-
-      // Create temporary link and trigger download
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `Contract_${orderId}.pdf`);
@@ -82,14 +113,40 @@ function CartPage() {
       window.URL.revokeObjectURL(url);
 
       alert('Đang tải hợp đồng...');
+
     } catch (err) {
       console.error('Error downloading contract:', err);
-      alert('Không thể tải hợp đồng. Vui lòng kiểm tra quyền truy cập và trạng thái thanh toán.');
+
+      // === BẮT ĐẦU SỬA LỖI HIỂN THỊ ALERT ===
+      let errorMessage = err.message; // Tin nhắn dự phòng
+
+      // Kiểm tra xem data lỗi có phải là Blob không
+      if (err.response && err.response.data instanceof Blob) {
+        try {
+          // Chuyển Blob (file) thành Text (chuỗi)
+          const errorText = await err.response.data.text();
+          // Chuyển Text (chuỗi) thành JSON
+          const errorJson = JSON.parse(errorText);
+          // Bây giờ chúng ta có thể đọc tin nhắn lỗi
+          errorMessage = errorJson.error || errorJson.message || err.message;
+        } catch (parseError) {
+          console.error('Không thể đọc lỗi từ Blob:', parseError);
+          errorMessage = 'Lỗi không xác định khi tải hợp đồng.';
+        }
+      } else {
+        // Nếu lỗi không phải Blob, đọc như bình thường
+        errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
+      }
+
+      alert('Không thể tải hợp đồng: ' + errorMessage);
+      // === KẾT THÚC SỬA LỖI ===
     }
   };
 
   const calculateTotal = () => {
-    return cartItems.reduce((total, item) => {
+    // Sửa: Chỉ tính tổng các đơn hàng 'pending'
+    const pendingItems = cartItems.filter(item => item.status === 'pending');
+    return pendingItems.reduce((total, item) => {
       return total + (item.price * item.quantity);
     }, 0);
   };
@@ -111,6 +168,7 @@ function CartPage() {
   }
 
   return (
+    // ... (Toàn bộ phần JSX return của bạn là chính xác, giữ nguyên) ...
     <div className="min-h-screen bg-gray-50">
       <div className="container py-8">
         <h1 className="text-4xl font-bold text-gray-900 mb-8">Lịch sử giao dịch</h1>
@@ -188,6 +246,7 @@ function CartPage() {
                           onClick={() => handleDownloadContract(item.id)}
                           className="btn btn-primary"
                           style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                          _E_
                         >
                           ⬇️ Tải Hợp Đồng
                         </button>
@@ -196,7 +255,7 @@ function CartPage() {
                   </div>
                 ))}
               </div>
-            </div>
+              Such           </div>
 
             <div>
               <div className="card sticky p-6">
@@ -216,13 +275,13 @@ function CartPage() {
                       paddingTop: '0.5rem',
                     }}
                     className="flex justify-between text-xl font-bold text-gray-900"
-                  >
+                    Methods               >
                     <span>Tổng:</span>
                     <span>{calculateTotal().toLocaleString('vi-VN')} đ</span>
                   </div>
                 </div>
                 <button className="btn btn-primary btn-full">
-                  Thanh toán
+                  Section               Thanh toán
                 </button>
               </div>
             </div>
@@ -234,4 +293,3 @@ function CartPage() {
 }
 
 export default CartPage;
-
