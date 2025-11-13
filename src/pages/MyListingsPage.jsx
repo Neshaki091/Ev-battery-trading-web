@@ -2,6 +2,26 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
+// === ICONS ===
+// Thêm các icon cần thiết
+const IconImagePlaceholder = () => (
+  <svg className="icon-svg" xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  </svg>
+);
+const IconEmptyBox = () => (
+  <svg className="icon-svg" xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+  </svg>
+);
+const IconPencil = () => (
+  <svg className="icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+);
+const IconTrash = () => (
+  <svg className="icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+);
+
+// === COMPONENT ===
 function MyListingsPage() {
   const navigate = useNavigate();
   const [listings, setListings] = useState([]);
@@ -14,7 +34,6 @@ function MyListingsPage() {
       navigate('/login');
       return;
     }
-
     fetchMyListings();
   }, [navigate]);
 
@@ -33,7 +52,7 @@ function MyListingsPage() {
   };
 
   const handleDeleteListing = async (listingId) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa tin đăng này không?')) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa tin đăng này không?')) return;
 
     try {
       await api.delete(`/listings/${listingId}`);
@@ -44,94 +63,142 @@ function MyListingsPage() {
     }
   };
 
+  // 1. NÂNG CẤP TRẠNG THÁI LOADING
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="text-xl text-gray-600">Đang tải tin đăng của bạn...</div>
+      <div className="loading-container text-center py-20">
+        <div className="loading-spinner-simple"></div>
+        <p className="text-xl mt-4" style={{ color: 'var(--text-body)' }}>
+          Đang tải tin đăng của bạn...
+        </p>
       </div>
     );
   }
 
+  // 2. NÂNG CẤP TRẠNG THÁI LỖI
   if (error) {
     return (
-      <div className="error-container">
-        <div className="text-xl text-red-600">Lỗi: {error}</div>
+      <div className="error-container text-center py-20">
+        <h3 className="text-xl font-semibold" style={{ color: 'var(--color-danger)' }}>
+          Lỗi: {error}
+        </h3>
+        <p className="mt-2" style={{ color: 'var(--text-body)' }}>
+          Không thể tải dữ liệu. Vui lòng thử lại sau.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    // Sử dụng CSS Variable cho nền
+    <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
       <div className="container py-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">
+        <h1 className="text-4xl font-bold mb-8" style={{ color: 'var(--text-heading)' }}>
           Tin đăng của tôi ({listings.length})
         </h1>
 
         {listings.length === 0 ? (
-          <div className="card p-8 text-center">
-            <p className="text-xl text-gray-600 mb-4">Bạn chưa có tin đăng nào</p>
+          // 3. NÂNG CẤP TRẠNG THÁI RỖNG
+          <div className="card text-center py-20">
+            <div style={{ color: '#9ca3af', margin: '0 auto', fontSize: '3rem' }}>
+              <IconEmptyBox />
+            </div>
+            <p className="text-xl my-4" style={{ color: 'var(--text-body)' }}>
+              Bạn chưa có tin đăng nào
+            </p>
             <Link to="/create" className="btn btn-primary">
               Tạo tin đăng mới
             </Link>
           </div>
         ) : (
-          <div className="grid grid-1 grid-md-2 grid-lg-3">
+          <div className="grid grid-1 grid-md-2 grid-lg-3" style={{ gap: '1.5rem' }}>
             {listings.map((listing) => {
               const listingId = listing._id || listing.id;
-
-              // === SỬA ĐỔI LOGIC HÌNH ẢNH (Bỏ Picsum) ===
               const imageUrl = listing.images && listing.images[0];
 
               return (
-                <div key={listingId} className="product-card">
-                  <div className="product-image">
-                    {/* 2. Dùng conditional rendering */}
+                // 4. SỬ DỤNG CLASS CARD MỚI
+                <div key={listingId} className="product-card-modern">
+
+                  {/* 5. CẬP NHẬT CẤU TRÚC ẢNH */}
+                  <div className="product-image-container">
                     {imageUrl ? (
                       <img
                         src={imageUrl}
                         alt={listing.title || 'Listing Image'}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        className="product-image-modern"
                       />
                     ) : (
-                      // 3. Hiển thị ô màu xám nếu không có ảnh
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: '#f3f4f6',
-                          color: '#9ca3af',
-                        }}
-                      >
-                        Không có ảnh
+                      <div className="product-image-placeholder">
+                        <div className="text-gray-400">
+                          <IconImagePlaceholder />
+                        </div>
                       </div>
                     )}
                   </div>
-                  <div className="product-info">
-                    <h3 className="product-title">
+
+                  {/* 6. CẬP NHẬT PHẦN THÔNG TIN */}
+                  <div className="product-info p-4">
+                    <h3 className="product-title font-semibold text-lg">
                       {listing.title || 'Sản phẩm không tên'}
                     </h3>
-                    <div className="text-gray-600 mb-2">
-                      Status: <strong>{listing.status}</strong>
+
+                    {/* 7. THÊM STATUS BADGE */}
+                    <div className="mb-2 mt-1">
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        background: listing.status === 'ACTIVE' ? 'var(--color-danger-light)' : 'var(--bg-muted)',
+                        color: listing.status === 'ACTIVE' ? 'var(--color-danger)' : 'var(--text-body)',
+                      }}>
+                        {listing.status}
+                      </span>
                     </div>
-                    <p className="product-price">
+
+                    <p className="product-price text-lg font-bold mt-3">
                       {listing.price ? `${listing.price.toLocaleString('vi-VN')} VND` : 'Liên hệ'}
                     </p>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                      <Link to={`/products/${listingId}`} className="btn btn-primary" style={{ flex: 1, textAlign: 'center' }}>
+
+                    {/* 8. NÂNG CẤP NHÓM NÚT BẤM */}
+                    <div className="flex gap-2" style={{ marginTop: '1rem' }}>
+                      <Link
+                        to={`/products/${listingId}`}
+                        className="btn btn-primary"
+                        style={{ flex: 1, textAlign: 'center' }}
+                      >
                         Xem
                       </Link>
-                      <Link to={`/edit/${listingId}`} className="btn" style={{ background: 'transparent', color: '#2563eb', border: '1px solid #2563eb', textAlign: 'center' }}>
-                        Sửa
+
+                      <Link
+                        to={`/edit/${listingId}`}
+                        className="btn"
+                        title="Sửa"
+                        style={{
+                          background: 'var(--bg-muted)',
+                          color: 'var(--text-heading)',
+                          border: '1px solid var(--color-border)',
+                          padding: '0.5rem 0.75rem'
+                        }}
+                      >
+                        <IconPencil />
                       </Link>
+
                       <button
                         onClick={() => handleDeleteListing(listingId)}
                         className="btn"
-                        style={{ background: 'transparent', color: '#dc2626', border: '1px solid #dc2626' }}
+                        title="Xóa"
+                        style={{
+                          background: 'transparent',
+                          color: 'var(--color-danger)',
+                          border: '1px solid var(--color-danger)',
+                          padding: '0.5rem 0.75rem'
+                        }}
                       >
-                        Xóa
+                        <IconTrash />
                       </button>
                     </div>
                   </div>
