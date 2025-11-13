@@ -15,45 +15,40 @@ function AdminDashboardPage() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
       <div className="container py-8">
         <div className="card p-6">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">🛡️ Admin Dashboard</h2>
+          <h2 className="text-3xl font-bold mb-6" style={{ color: 'var(--text-heading)' }}>🛡️ Admin Dashboard</h2>
           
-          <div style={{ borderBottom: '1px solid #ddd', marginBottom: '1rem' }}>
+          <div style={{ borderBottom: '1px solid var(--color-border)', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
               <button
-                className={activeTab === 'listings' ? 'btn btn-primary' : 'btn'}
+                className={activeTab === 'listings' ? 'btn btn-primary' : 'btn btn-secondary'}
                 onClick={() => setActiveTab('listings')}
-                style={{ background: activeTab === 'listings' ? '#2563eb' : 'transparent', color: activeTab === 'listings' ? 'white' : '#2563eb', border: '1px solid #2563eb' }}
               >
                 Tin chờ duyệt
               </button>
               <button
-                className={activeTab === 'reports' ? 'btn btn-primary' : 'btn'}
+                className={activeTab === 'reports' ? 'btn btn-primary' : 'btn btn-secondary'}
                 onClick={() => setActiveTab('reports')}
-                style={{ background: activeTab === 'reports' ? '#2563eb' : 'transparent', color: activeTab === 'reports' ? 'white' : '#2563eb', border: '1px solid #2563eb' }}
               >
                 Báo cáo
               </button>
               <button
-                className={activeTab === 'fees' ? 'btn btn-primary' : 'btn'}
+                className={activeTab === 'fees' ? 'btn btn-primary' : 'btn btn-secondary'}
                 onClick={() => setActiveTab('fees')}
-                style={{ background: activeTab === 'fees' ? '#2563eb' : 'transparent', color: activeTab === 'fees' ? 'white' : '#2563eb', border: '1px solid #2563eb' }}
               >
                 Quản lý Phí
               </button>
               <button
-                className={activeTab === 'analytics' ? 'btn btn-primary' : 'btn'}
+                className={activeTab === 'analytics' ? 'btn btn-primary' : 'btn btn-secondary'}
                 onClick={() => setActiveTab('analytics')}
-                style={{ background: activeTab === 'analytics' ? '#2563eb' : 'transparent', color: activeTab === 'analytics' ? 'white' : '#2563eb', border: '1px solid #2563eb' }}
               >
                 Analytics
               </button>
               <button
-                className={activeTab === 'users' ? 'btn btn-primary' : 'btn'}
+                className={activeTab === 'users' ? 'btn btn-primary' : 'btn btn-secondary'}
                 onClick={() => setActiveTab('users')}
-                style={{ background: activeTab === 'users' ? '#2563eb' : 'transparent', color: activeTab === 'users' ? 'white' : '#2563eb', border: '1px solid #2563eb' }}
               >
                 Users
               </button>
@@ -137,21 +132,26 @@ function AdminListingsTab() {
   };
 
   if (loading) {
-    return <div className="text-gray-600">Đang tải...</div>;
+    return (
+      <div className="loading-container text-center py-8">
+        <div className="loading-spinner-simple"></div>
+        <p className="mt-4" style={{ color: 'var(--text-body)' }}>Đang tải...</p>
+      </div>
+    );
   }
 
   return (
     <div>
-      <h3 className="text-xl font-bold text-gray-900 mb-4">
+      <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--text-heading)' }}>
         Quản lý Tin đăng ({listings.length})
       </h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {listings.map((listing) => {
           const listingId = listing._id || listing.id;
           return (
-            <div key={listingId} style={{ borderTop: '1px solid #eef2f7', padding: '0.5rem 0' }}>
-              <strong>{listing.title}</strong>
-              <div className="text-gray-600">
+            <div key={listingId} style={{ borderTop: '1px solid var(--color-border)', padding: '0.5rem 0' }}>
+              <strong style={{ color: 'var(--text-heading)' }}>{listing.title}</strong>
+              <div style={{ color: 'var(--text-body)' }}>
                 {listing.price ? `${listing.price.toLocaleString('vi-VN')} VND` : 'Liên hệ'} (ID: {listingId})
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
@@ -162,10 +162,10 @@ function AdminListingsTab() {
                 )}
                 {listing.status !== 'Pending' && (
                   <>
-                    <span className="text-gray-600" style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>
+                    <span style={{ fontSize: '0.875rem', marginRight: '0.5rem', color: 'var(--text-body)' }}>
                       Status: {listing.status}
                     </span>
-                    <button onClick={() => handleHide(listingId)} className="btn" style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', background: 'transparent', color: '#2563eb', border: '1px solid #2563eb' }}>
+                    <button onClick={() => handleHide(listingId)} className="btn btn-secondary" style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem' }}>
                       Ẩn tin
                     </button>
                   </>
@@ -175,14 +175,14 @@ function AdminListingsTab() {
                     ✅ Verified
                   </button>
                 ) : (
-                  <button onClick={() => handleVerify(listingId, true)} className="btn" style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', background: 'transparent', color: '#2563eb', border: '1px solid #2563eb' }}>
+                  <button onClick={() => handleVerify(listingId, true)} className="btn btn-secondary" style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem' }}>
                     ❌ Set Verified
                   </button>
                 )}
-                <a href={`/products/${listingId}`} target="_blank" className="btn" style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', background: 'transparent', color: '#2563eb', border: '1px solid #2563eb', textDecoration: 'none' }}>
+                <a href={`/products/${listingId}`} target="_blank" className="btn btn-secondary" style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', textDecoration: 'none' }}>
                   👁️ Xem
                 </a>
-                <button onClick={() => handleDelete(listingId)} className="btn" style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', background: 'transparent', color: '#dc2626', border: '1px solid #dc2626' }}>
+                <button onClick={() => handleDelete(listingId)} className="btn" style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', background: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}>
                   🗑️ Xóa
                 </button>
               </div>
@@ -225,21 +225,26 @@ function AdminReportsTab() {
   };
 
   if (loading) {
-    return <div className="text-gray-600">Đang tải...</div>;
+    return (
+      <div className="loading-container text-center py-8">
+        <div className="loading-spinner-simple"></div>
+        <p className="mt-4" style={{ color: 'var(--text-body)' }}>Đang tải...</p>
+      </div>
+    );
   }
 
   return (
     <div>
-      <h3 className="text-xl font-bold text-gray-900 mb-4">
+      <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--text-heading)' }}>
         Báo cáo Người dùng ({reports.length})
       </h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {reports.map((report) => {
           const reportId = report._id || report.id;
           return (
-            <div key={reportId} style={{ borderTop: '1px solid #eef2f7', padding: '0.5rem 0' }}>
-              <strong>{report.subjectType} / {report.reasonCode}</strong> - Subject ID: {report.subjectId} (Status: {report.status})
-              <div className="text-gray-600">Details: {report.details || '—'}</div>
+            <div key={reportId} style={{ borderTop: '1px solid var(--color-border)', padding: '0.5rem 0' }}>
+              <strong style={{ color: 'var(--text-heading)' }}>{report.subjectType} / {report.reasonCode}</strong> - Subject ID: {report.subjectId} (Status: {report.status})
+              <div style={{ color: 'var(--text-body)' }}>Details: {report.details || '—'}</div>
               <div style={{ marginTop: '0.25rem' }}>
                 <button
                   onClick={() => handleResolve(reportId, 'RESOLVED')}
@@ -252,8 +257,8 @@ function AdminReportsTab() {
                 <button
                   onClick={() => handleResolve(reportId, 'REJECTED')}
                   disabled={report.status !== 'PENDING'}
-                  className="btn"
-                  style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', background: 'transparent', color: '#2563eb', border: '1px solid #2563eb', opacity: report.status !== 'PENDING' ? 0.5 : 1 }}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', opacity: report.status !== 'PENDING' ? 0.5 : 1 }}
                 >
                   ❌ Reject
                 </button>
@@ -329,33 +334,38 @@ function AdminFeesTab() {
   };
 
   if (loading) {
-    return <div className="text-gray-600">Đang tải...</div>;
+    return (
+      <div className="loading-container text-center py-8">
+        <div className="loading-spinner-simple"></div>
+        <p className="mt-4" style={{ color: 'var(--text-body)' }}>Đang tải...</p>
+      </div>
+    );
   }
 
   return (
     <div>
-      <h3 className="text-xl font-bold text-gray-900 mb-4">
+      <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--text-heading)' }}>
         Quản lý Phí Hoa Hồng ({fees.length})
       </h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
         {fees.map((fee) => {
           const feeId = fee._id || fee.id;
           return (
-            <div key={feeId} style={{ borderTop: '1px solid #eef2f7', padding: '0.5rem 0' }}>
-              <strong>{fee.type}</strong>: Tỷ lệ {fee.rate * 100}% ({fee.isActive ? 'Active' : 'Inactive'})
-              <div className="text-gray-600">ID: {feeId}</div>
+            <div key={feeId} style={{ borderTop: '1px solid var(--color-border)', padding: '0.5rem 0' }}>
+              <strong style={{ color: 'var(--text-heading)' }}>{fee.type}</strong>: Tỷ lệ {fee.rate * 100}% ({fee.isActive ? 'Active' : 'Inactive'})
+              <div style={{ color: 'var(--text-body)' }}>ID: {feeId}</div>
               <div style={{ marginTop: '0.25rem', display: 'flex', gap: '0.5rem' }}>
                 <button
                   onClick={() => handleUpdateFee(feeId)}
-                  className="btn"
-                  style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', background: 'transparent', color: '#2563eb', border: '1px solid #2563eb' }}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem' }}
                 >
                   ✏️ Sửa
                 </button>
                 <button
                   onClick={() => handleDeleteFee(feeId)}
                   className="btn"
-                  style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', background: 'transparent', color: '#dc2626', border: '1px solid #dc2626' }}
+                  style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', background: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}
                 >
                   ❌ Delete
                 </button>
@@ -365,7 +375,7 @@ function AdminFeesTab() {
         })}
       </div>
 
-      <h4 className="text-lg font-semibold text-gray-900 mb-4">Tạo/Sửa Cấu hình Phí</h4>
+      <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-heading)' }}>Tạo/Sửa Cấu hình Phí</h4>
       <form onSubmit={handleCreateFee} style={{ maxWidth: '400px' }}>
         <div className="form-group">
           <input
@@ -420,13 +430,18 @@ function AdminAnalyticsTab() {
   };
 
   if (loading) {
-    return <div className="text-gray-600">Đang tải...</div>;
+    return (
+      <div className="loading-container text-center py-8">
+        <div className="loading-spinner-simple"></div>
+        <p className="mt-4" style={{ color: 'var(--text-body)' }}>Đang tải...</p>
+      </div>
+    );
   }
 
   return (
     <div>
-      <h3 className="text-xl font-bold text-gray-900 mb-4">Thống kê 30 ngày</h3>
-      <pre className="text-gray-600" style={{ background: '#f3f4f6', padding: '1rem', borderRadius: '0.5rem', overflow: 'auto' }}>
+      <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--text-heading)' }}>Thống kê 30 ngày</h3>
+      <pre style={{ color: 'var(--text-body)', background: 'var(--bg-muted)', padding: '1rem', borderRadius: 'var(--radius-md)', overflow: 'auto' }}>
         {JSON.stringify(analytics?.summary || {}, null, 2)}
       </pre>
     </div>
@@ -487,20 +502,31 @@ function AdminUsersTab() {
   };
 
   if (loading) {
-    return <div className="text-gray-600">Đang tải...</div>;
+    return (
+      <div className="loading-container text-center py-8">
+        <div className="loading-spinner-simple"></div>
+        <p className="mt-4" style={{ color: 'var(--text-body)' }}>Đang tải...</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="text-red-600">Lỗi: {error}</div>;
+    return (
+      <div className="error-container text-center py-8">
+        <h3 className="text-xl font-semibold" style={{ color: 'var(--color-danger)' }}>
+          Lỗi: {error}
+        </h3>
+      </div>
+    );
   }
 
   return (
     <div>
-      <h3 className="text-xl font-bold text-gray-900 mb-4">Quản lý Người dùng ({users.length})</h3>
+      <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--text-heading)' }}>Quản lý Người dùng ({users.length})</h3>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+            <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
               <th style={{ padding: '0.75rem', textAlign: 'left' }}>ID</th>
               <th style={{ padding: '0.75rem', textAlign: 'left' }}>Email</th>
               <th style={{ padding: '0.75rem', textAlign: 'left' }}>Phone</th>
@@ -515,7 +541,7 @@ function AdminUsersTab() {
               const userId = user._id || user.id;
               const profile = user.profile || {};
               return (
-                <tr key={userId} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <tr key={userId} style={{ borderBottom: '1px solid var(--color-border)' }}>
                   <td style={{ padding: '0.75rem' }}>{userId}</td>
                   <td style={{ padding: '0.75rem' }}>{profile.email || '—'}</td>
                   <td style={{ padding: '0.75rem' }}>{profile.phonenumber || '—'}</td>
@@ -558,7 +584,7 @@ function AdminUsersTab() {
                     <button
                       onClick={() => handleDeleteUser(userId)}
                       className="btn"
-                      style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', background: 'transparent', color: '#dc2626', border: '1px solid #dc2626' }}
+                      style={{ fontSize: '0.875rem', padding: '0.25rem 0.5rem', background: 'transparent', color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}
                     >
                       🗑️ Xóa
                     </button>

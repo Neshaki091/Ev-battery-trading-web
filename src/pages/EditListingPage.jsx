@@ -109,17 +109,18 @@ function EditListingPage() {
 
   if (fetching) {
     return (
-      <div className="loading-container">
-        <div className="text-xl text-gray-600">Đang tải thông tin...</div>
+      <div className="loading-container text-center py-20">
+        <div className="loading-spinner-simple"></div>
+        <p className="text-xl mt-4" style={{ color: 'var(--text-body)' }}>Đang tải thông tin...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
       <div className="container py-8">
         <div className="card p-8" style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Chỉnh sửa tin đăng</h2>
+          <h2 className="text-3xl font-bold mb-6" style={{ color: 'var(--text-heading)' }}>Chỉnh sửa tin đăng</h2>
 
           {error && <div className="error-message mb-4">{error}</div>}
 
@@ -188,7 +189,7 @@ function EditListingPage() {
               />
             </div>
 
-            <h3 className="text-xl font-semibold text-gray-900 mb-4 mt-6">Thông tin phân loại</h3>
+            <h3 className="text-xl font-semibold mb-4 mt-6" style={{ color: 'var(--text-heading)' }}>Thông tin phân loại</h3>
 
             <div className="form-group">
               <label className="form-label">Danh mục</label>
@@ -219,8 +220,8 @@ function EditListingPage() {
             </div>
 
             {formData.category === 'Vehicle' && (
-              <div style={{ borderTop: '1px solid #ddd', marginTop: '1rem', paddingTop: '1rem' }}>
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Chi tiết Xe (Vehicle)</h4>
+              <div style={{ borderTop: '1px solid var(--color-border)', marginTop: '1rem', paddingTop: '1rem' }}>
+                <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-heading)' }}>Chi tiết Xe (Vehicle)</h4>
                 <div className="form-group">
                   <label className="form-label">Hãng xe</label>
                   <input
@@ -269,8 +270,8 @@ function EditListingPage() {
             )}
 
             {formData.category === 'Battery' && (
-              <div style={{ borderTop: '1px solid #ddd', marginTop: '1rem', paddingTop: '1rem' }}>
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Chi tiết Pin (Battery)</h4>
+              <div style={{ borderTop: '1px solid var(--color-border)', marginTop: '1rem', paddingTop: '1rem' }}>
+                <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-heading)' }}>Chi tiết Pin (Battery)</h4>
                 <div className="form-group">
                   <label className="form-label">Dung lượng (kWh)</label>
                   <input
@@ -303,8 +304,8 @@ function EditListingPage() {
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="btn"
-                style={{ flex: 1, background: 'transparent', color: '#374151', border: '1px solid #d1d5db' }}
+                className="btn btn-secondary"
+                style={{ flex: 1 }}
               >
                 Hủy
               </button>

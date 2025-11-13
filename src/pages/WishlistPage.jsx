@@ -55,63 +55,88 @@ function WishlistPage() {
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="text-xl text-gray-600">Đang tải wishlist...</div>
+      <div className="loading-container text-center py-20">
+        <div className="loading-spinner-simple"></div>
+        <p className="text-xl mt-4" style={{ color: 'var(--text-body)' }}>Đang tải wishlist...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="error-container">
-        <div className="text-xl text-red-600">Lỗi: {error}</div>
+      <div className="error-container text-center py-20">
+        <h3 className="text-xl font-semibold" style={{ color: 'var(--color-danger)' }}>
+          Lỗi: {error}
+        </h3>
+        <p className="mt-2" style={{ color: 'var(--text-body)' }}>
+          Không thể tải dữ liệu. Vui lòng thử lại sau.
+        </p>
       </div>
     );
   }
 
+  const IconImagePlaceholder = () => (
+    <svg className="icon-svg" xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  );
+  const IconEmptyBox = () => (
+    <svg className="icon-svg" xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+    </svg>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
       <div className="container py-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Danh sách yêu thích</h1>
+        <h1 className="text-4xl font-bold mb-8" style={{ color: 'var(--text-heading)' }}>Danh sách yêu thích</h1>
 
         {wishlistItems.length === 0 ? (
-          <div className="card p-8 text-center">
-            <p className="text-xl text-gray-600 mb-4">Danh sách yêu thích trống</p>
+          <div className="card text-center py-20">
+            <div style={{ color: '#9ca3af', margin: '0 auto', fontSize: '3rem' }}>
+              <IconEmptyBox />
+            </div>
+            <p className="text-xl my-4" style={{ color: 'var(--text-body)' }}>Danh sách yêu thích trống</p>
             <Link to="/products" className="btn btn-primary">
               Tiếp tục mua sắm
             </Link>
           </div>
         ) : (
-          <div className="grid grid-1 grid-md-2 grid-lg-4">
+          <div className="grid grid-1 grid-md-2 grid-lg-4" style={{ gap: '1.5rem' }}>
             {wishlistItems.map((item) => {
               const itemId = item._id || item.id;
-              const imageUrl = item.images && item.images[0]
-                ? item.images[0]
-                : `https://picsum.photos/seed/${itemId}/600/300`;
+              const imageUrl = item.images && item.images[0];
               return (
-                <div key={itemId} className="product-card">
-                  <div className="product-image">
-                    <img
-                      src={imageUrl}
-                      alt={item.title || 'Listing Image'}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                <div key={itemId} className="product-card-modern">
+                  <div className="product-image-container">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={item.title || 'Listing Image'}
+                        className="product-image-modern"
+                      />
+                    ) : (
+                      <div className="product-image-placeholder">
+                        <div className="text-gray-400">
+                          <IconImagePlaceholder />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="product-info">
-                    <h3 className="product-title">
+                  <div className="product-info p-4">
+                    <h3 className="product-title font-semibold text-lg">
                       {item.title || 'Sản phẩm không tên'}
                     </h3>
-                    <p className="product-price">
+                    <p className="product-price text-lg font-bold mt-3">
                       {item.price ? `${item.price.toLocaleString('vi-VN')} VND` : 'Liên hệ'}
                     </p>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <div className="flex gap-2" style={{ marginTop: '1rem' }}>
                       <Link to={`/products/${itemId}`} className="btn btn-primary" style={{ flex: 1, textAlign: 'center' }}>
                         Xem
                       </Link>
                       <button
                         onClick={() => handleRemoveFromWishlist(itemId)}
-                        className="btn"
-                        style={{ background: 'transparent', color: '#2563eb', border: '1px solid #2563eb' }}
+                        className="btn btn-secondary"
                       >
                         Xóa
                       </button>

@@ -194,17 +194,17 @@ function CreateListingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
       <div className="container py-8">
         <div className="card p-8" style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Tạo tin mới</h2>
+          <h2 className="text-3xl font-bold mb-6" style={{ color: 'var(--text-heading)' }}>Tạo tin mới</h2>
 
           {error && <div className="error-message mb-4">{error}</div>}
 
           <form onSubmit={handleSubmit}>
 
             {/* --- 1. Thông tin cơ bản --- */}
-            <h3 className="text-xl font-semibold text-gray-900 mb-4 mt-4 border-t pt-4">
+            <h3 className="text-xl font-semibold mb-4 mt-4 border-t pt-4" style={{ color: 'var(--text-heading)', borderColor: 'var(--color-border)' }}>
               1. Thông tin cơ bản
             </h3>
             <div className="form-group">
@@ -258,7 +258,7 @@ function CreateListingPage() {
             </div>
 
             {/* --- 2. Hình ảnh (Giữ nguyên) --- */}
-            <h3 className="text-xl font-semibold text-gray-900 mb-4 mt-6 border-t pt-4">
+            <h3 className="text-xl font-semibold mb-4 mt-6 border-t pt-4" style={{ color: 'var(--text-heading)', borderColor: 'var(--color-border)' }}>
               2. Hình ảnh
             </h3>
             <div className="form-group">
@@ -294,7 +294,7 @@ function CreateListingPage() {
             </div>
 
             {/* --- 3. Phân loại (Giữ nguyên) --- */}
-            <h3 className="text-xl font-semibold text-gray-900 mb-4 mt-6 border-t pt-4">
+            <h3 className="text-xl font-semibold mb-4 mt-6 border-t pt-4" style={{ color: 'var(--text-heading)', borderColor: 'var(--color-border)' }}>
               3. Phân loại
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -320,8 +320,8 @@ function CreateListingPage() {
             {/* --- 4. Chi tiết (Giữ nguyên) --- */}
             <div className="mt-6">
               {formData.category === 'Vehicle' && (
-                <div className="p-4 rounded-lg bg-gray-100 border border-gray-200">
-                  <h4 className="text-lg font-semibold mb-4 text-gray-800">Chi tiết Xe</h4>
+                <div className="p-4 rounded-lg" style={{ background: 'var(--bg-muted)', border: '1px solid var(--color-border)' }}>
+                  <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-heading)' }}>Chi tiết Xe</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input name="vehicle_brand" placeholder="Hãng xe (VD: Vinfast)" value={formData.vehicle_brand} onChange={handleChange} className="form-input" />
                     <input name="vehicle_model" placeholder="Mẫu xe (VD: VF8)" value={formData.vehicle_model} onChange={handleChange} className="form-input" />
@@ -332,8 +332,8 @@ function CreateListingPage() {
               )}
 
               {formData.category === 'Battery' && (
-                <div className="p-4 rounded-lg bg-gray-100 border border-gray-200">
-                  <h4 className="text-lg font-semibold mb-4 text-gray-800">Chi tiết Pin</h4>
+                <div className="p-4 rounded-lg" style={{ background: 'var(--bg-muted)', border: '1px solid var(--color-border)' }}>
+                  <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-heading)' }}>Chi tiết Pin</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input name="battery_capacity_kwh" placeholder="Dung lượng (kWh)" type="number" min="0" step="0.1" value={formData.battery_capacity_kwh} onChange={handleChange} className="form-input" />
                     <input name="battery_condition_percentage" placeholder="Tình trạng Pin (%)" type="number" min="0" max="100" value={formData.battery_condition_percentage} onChange={handleChange} className="form-input" />

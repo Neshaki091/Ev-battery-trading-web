@@ -55,15 +55,15 @@ function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center" style={{ padding: '3rem 1rem' }}>
-      <div style={{ maxWidth: '28rem', width: '100%' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-body)', padding: '3rem 1rem' }}>
+      <div className="card p-8" style={{ maxWidth: '28rem', width: '100%' }}>
         <div>
-          <h2 className="text-center text-3xl font-bold text-gray-900 mb-2">
+          <h2 className="text-center text-3xl font-bold mb-2" style={{ color: 'var(--text-heading)' }}>
             Đăng ký tài khoản mới
           </h2>
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm" style={{ color: 'var(--text-body)' }}>
             Hoặc{' '}
-            <Link to="/login" className="text-blue-600" style={{ fontWeight: '500' }}>
+            <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: '500' }}>
               đăng nhập nếu đã có tài khoản
             </Link>
           </p>

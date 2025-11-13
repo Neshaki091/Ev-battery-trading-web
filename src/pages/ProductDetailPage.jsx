@@ -322,7 +322,7 @@ function ProductDetailPage() {
 
         {/* === BỐ CỤC 2 CỘT === */}
         <div className="card card-lg" style={{ padding: 0 }}>
-          <div className="grid grid-cols-1 md:grid-cols-2">
+          <div className="grid grid-1 grid-md-2">
 
             {/* === CỘT TRÁI: THƯ VIỆN ẢNH (Sticky) === */}
             <div className="p-4 md:p-8 md:sticky top-4 self-start">
