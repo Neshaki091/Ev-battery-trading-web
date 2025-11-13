@@ -57,6 +57,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
 }
 
 /* Đảm bảo padding và border không làm thay đổi kích thước box */
@@ -78,6 +79,21 @@ a {
 .app-container {
   min-height: 100vh;
   background-color: var(--bg-body);
+}
+
+.page-wrapper {
+  position: relative;
+  min-height: calc(100vh - 64px);
+  padding-bottom: 2rem;
+}
+
+.page-transition {
+  min-height: inherit;
+  opacity: 1;
+}
+
+.page-transition--active {
+  animation: page-fade-in 0.45s ease forwards;
 }
 
 .container {
@@ -712,4 +728,61 @@ a {
   height: 1px;
   background-color: var(--color-border);
   margin: 0.5rem 0;
+}
+
+.btn,
+.nav-link,
+.nav-link-button,
+.nav-user-button,
+.category-card,
+.benefit-card,
+.insight-card,
+.product-card-modern,
+.stat-card,
+.search-card,
+.cta-card,
+.dropdown-menu {
+  transition: transform 0.25s ease, box-shadow 0.35s ease, background-color 0.25s ease, color 0.25s ease;
+}
+
+.btn:hover,
+.nav-link-button:hover,
+.nav-user-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -18px rgba(37, 99, 235, 0.45);
+}
+
+.btn:active,
+.nav-link-button:active,
+.nav-user-button:active {
+  transform: translateY(0);
+  box-shadow: 0 10px 22px -16px rgba(37, 99, 235, 0.4);
+}
+
+.product-card-modern,
+.category-card,
+.benefit-card,
+.insight-card,
+.stat-card {
+  will-change: transform, box-shadow;
+}
+
+@keyframes page-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

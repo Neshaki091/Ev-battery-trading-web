@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react'; // MỚI: Thêm useRef
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
@@ -156,27 +156,55 @@ function Navigation() {
   );
 }
 
+function AppLayout() {
+  const location = useLocation();
+  const [isTransitioning, setIsTransitioning] = useState(true);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    const timeout = window.setTimeout(() => setIsTransitioning(false), 450);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    setIsTransitioning(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const timeout = window.setTimeout(() => setIsTransitioning(false), 450);
+    return () => window.clearTimeout(timeout);
+  }, [location.pathname, location.search]);
+
+  return (
+    <div className="app-container">
+      <Navigation />
+      <main className="page-wrapper">
+        <div
+          key={`${location.pathname}${location.search}${location.hash}`}
+          className={`page-transition ${isTransitioning ? 'page-transition--active' : ''}`}
+        >
+          <Routes location={location}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            <Route path="/products/:id" element={<ProductDetailPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/create" element={<CreateListingPage />} />
+            <Route path="/edit/:id" element={<EditListingPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/my-listings" element={<MyListingsPage />} />
+            <Route path="/admin" element={<AdminDashboardPage />} />
+          </Routes>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 function App() {
-  // Phần App() giữ nguyên
   return (
     <Router>
-      <div className="app-container">
-        <Navigation />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/products" element={<ProductsPage />} />
-          <Route path="/products/:id" element={<ProductDetailPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/create" element={<CreateListingPage />} />
-          <Route path="/edit/:id" element={<EditListingPage />} />
-          <Route path="/wishlist" element={<WishlistPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/my-listings" element={<MyListingsPage />} />
-          <Route path="/admin" element={<AdminDashboardPage />} />
-        </Routes>
-      </div>
+      <AppLayout />
     </Router>
   );
 }
