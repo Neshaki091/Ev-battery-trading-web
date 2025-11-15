@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
+import {
+  createOrGetRoom as createOrGetChatRoom,
+  fetchMessages as fetchChatMessages,
+  sendMessage as sendChatMessage,
+} from '../services/chat';
 
 // === ICONS ===
 // Thêm các icon cần thiết cho trang này
@@ -52,6 +57,16 @@ function ProductDetailPage() {
   const [sellerOrders, setSellerOrders] = useState([]);
   const [showSellerInfo, setShowSellerInfo] = useState(false);
   const [showSellerOrders, setShowSellerOrders] = useState(false);
+
+  // === CHAT STATE ===
+  const [chatRoomId, setChatRoomId] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatSending, setChatSending] = useState(false);
+  const [chatError, setChatError] = useState('');
+  const chatEndRef = useRef(null);
 
   // === Logic (Toàn bộ logic giữ nguyên) ===
   useEffect(() => {
@@ -271,6 +286,93 @@ function ProductDetailPage() {
     }
   };
 
+  // === CHAT HANDLERS ===
+  const scrollChatToBottom = () => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  };
+
+  const loadChatMessages = async (roomId) => {
+    if (!roomId) return;
+    try {
+      setChatLoading(true);
+      const response = await fetchChatMessages(roomId, { limit: 50 });
+      const messages = response.data || response;
+      setChatMessages(messages);
+      setTimeout(scrollChatToBottom, 50);
+    } catch (err) {
+      console.error('Error loading chat messages:', err);
+      setChatError(err.response?.data?.message || err.message || 'Lỗi khi tải tin nhắn');
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleOpenChat = async () => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    if (!seller || !seller._id) {
+      alert('Không tìm thấy thông tin người bán để tạo phòng chat.');
+      return;
+    }
+
+    setChatOpen(true);
+    setChatError('');
+
+    if (chatRoomId) {
+      loadChatMessages(chatRoomId);
+      return;
+    }
+
+    try {
+      setChatLoading(true);
+      const response = await createOrGetChatRoom(seller._id);
+      const roomId = response.roomId || response.data?.roomId;
+      if (!roomId) {
+        throw new Error('Không lấy được roomId từ server.');
+      }
+      setChatRoomId(roomId);
+      await loadChatMessages(roomId);
+    } catch (err) {
+      console.error('Error creating/getting chat room:', err);
+      setChatError(err.response?.data?.message || err.message || 'Lỗi khi mở chat');
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleSendChatMessage = async (event) => {
+    event.preventDefault();
+    if (!chatRoomId || !chatInput.trim()) return;
+
+    try {
+      setChatSending(true);
+      const response = await sendChatMessage(chatRoomId, chatInput.trim());
+      const messageData = response.data || response;
+
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          messageId: messageData.messageId,
+          senderId: messageData.senderId,
+          text: messageData.text,
+          timestamp: messageData.timestamp,
+        },
+      ]);
+      setChatInput('');
+      setTimeout(scrollChatToBottom, 50);
+    } catch (err) {
+      console.error('Error sending chat message:', err);
+      setChatError(err.response?.data?.message || err.message || 'Lỗi khi gửi tin nhắn');
+    } finally {
+      setChatSending(false);
+    }
+  };
+
   // === NÂNG CẤP: GUARD CLAUSES (Loading, Error, Not Found) ===
   if (loading) {
     return (
@@ -392,6 +494,16 @@ function ProductDetailPage() {
                     <p><strong>📞 Điện thoại:</strong> {seller.phonenumber || 'Không có'}</p>
                     <p><strong>✉️ Email:</strong> {seller.email || 'Không có'}</p>
 
+                    {seller._id !== currentUserId && (
+                      <button
+                        type="button"
+                        onClick={handleOpenChat}
+                        className="btn btn-primary mt-3 text-sm"
+                      >
+                        Chat với người bán
+                      </button>
+                    )}
+
                     <button onClick={() => setShowSellerInfo(prev => !prev)} className="btn btn-secondary mt-2 text-sm">
                       {showSellerInfo ? 'Ẩn thông tin bổ sung' : 'Xem thông tin bổ sung'}
                     </button>
@@ -486,6 +598,75 @@ function ProductDetailPage() {
               >
                 <IconReport /> Báo cáo tin đăng
               </button>
+
+              {/* PANEL CHAT VỚI NGƯỜI BÁN */}
+              {chatOpen && (
+                <div className="chat-panel mt-4">
+                  <div className="chat-panel-header">
+                    <div className="chat-panel-title">
+                      Chat với {seller?.username || 'người bán'}
+                    </div>
+                    {chatError && (
+                      <div className="chat-panel-error">
+                        {chatError}
+                      </div>
+                    )}
+                  </div>
+                  <div className="chat-panel-body">
+                    {chatLoading ? (
+                      <div className="chat-panel-loading">Đang tải tin nhắn...</div>
+                    ) : chatMessages.length === 0 ? (
+                      <div className="chat-panel-empty">
+                        Chưa có tin nhắn nào. Hãy là người bắt đầu cuộc trò chuyện!
+                      </div>
+                    ) : (
+                      <div className="chat-messages">
+                        {chatMessages.map((msg) => {
+                          const isMine = msg.senderId === currentUserId;
+                          const timeLabel = msg.timestamp
+                            ? new Date(msg.timestamp).toLocaleTimeString('vi-VN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '';
+
+                          return (
+                            <div
+                              key={msg.messageId}
+                              className={`chat-message-row ${isMine ? 'chat-message-row--mine' : 'chat-message-row--other'}`}
+                            >
+                              <div className="chat-message-bubble">
+                                <div className="chat-message-text">{msg.text}</div>
+                                {timeLabel && (
+                                  <div className="chat-message-time">{timeLabel}</div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div ref={chatEndRef} />
+                      </div>
+                    )}
+                  </div>
+                  <form className="chat-panel-footer" onSubmit={handleSendChatMessage}>
+                    <input
+                      type="text"
+                      className="form-input chat-input"
+                      placeholder="Nhắn gì đó cho người bán..."
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      disabled={chatSending}
+                    />
+                    <button
+                      type="submit"
+                      className="btn btn-primary chat-send-button"
+                      disabled={chatSending || !chatInput.trim()}
+                    >
+                      {chatSending ? 'Đang gửi...' : 'Gửi'}
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
         </div>

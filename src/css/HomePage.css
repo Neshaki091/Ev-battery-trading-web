@@ -665,6 +665,114 @@
   background: linear-gradient(180deg, rgba(199, 210, 254, 0.2) 0%, rgba(255, 255, 255, 0.95) 100%);
 }
 
+.filter-toggle-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.filter-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(31, 41, 55, 0.9);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.filter-toggle-button:hover {
+  background: rgba(239, 246, 255, 0.98);
+  border-color: rgba(59, 130, 246, 0.65);
+  box-shadow: 0 8px 24px -18px rgba(37, 99, 235, 0.6);
+  transform: translateY(-1px);
+}
+
+.filter-toggle-label {
+  letter-spacing: 0.02em;
+}
+
+.filter-toggle-icon {
+  font-size: 0.8rem;
+  transition: transform 0.16s ease;
+}
+
+.filter-toggle-icon--open {
+  transform: rotate(180deg);
+}
+
+.filter-bar {
+  margin-top: 0.5rem;
+  margin-bottom: 1.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 40px -26px rgba(15, 23, 42, 0.4);
+}
+
+.filter-bar-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1.2fr) auto;
+  gap: 1rem;
+  align-items: center;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.filter-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(55, 65, 81, 0.9);
+}
+
+.filter-input {
+  height: 40px;
+  font-size: 0.9rem;
+}
+
+.filter-price-group {
+  min-width: 260px;
+}
+
+.filter-price-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.filter-price-separator {
+  color: rgba(148, 163, 184, 0.95);
+  font-weight: 600;
+  text-align: center;
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.filter-button {
+  white-space: nowrap;
+  padding-inline: 1.25rem;
+}
+
 .product-meta {
   color: rgba(55, 65, 81, 0.85);
   font-weight: 500;

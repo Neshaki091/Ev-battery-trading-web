@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import {
+  fetchUserRooms as fetchChatRooms,
+  fetchMessages as fetchChatMessages,
+  sendMessage as sendChatMessage,
+} from '../services/chat';
 
 // Icon Edit
 const IconEdit = () => (
@@ -38,6 +43,18 @@ function ProfilePage() {
   const [profileError, setProfileError] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
 
+  // Chat state cho "Tin nhắn của tôi"
+  const [chatRooms, setChatRooms] = useState([]);
+  const [chatRoomsLoading, setChatRoomsLoading] = useState(false);
+  const [chatRoomsError, setChatRoomsError] = useState('');
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [roomMessages, setRoomMessages] = useState([]);
+  const [roomMessagesLoading, setRoomMessagesLoading] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+  const [chatError, setChatError] = useState('');
+  const chatEndRef = useRef(null);
+
   useEffect(() => {
     const token = localStorage.getItem('evb_token');
     if (!token) {
@@ -47,6 +64,13 @@ function ProfilePage() {
 
     fetchProfile();
   }, [navigate]);
+
+  useEffect(() => {
+    // Sau khi profile load xong mới gọi rooms (đảm bảo token hợp lệ)
+    if (!loading) {
+      loadChatRooms();
+    }
+  }, [loading]);
 
   const fetchProfile = async () => {
     try {
@@ -63,6 +87,73 @@ function ProfilePage() {
       console.error('Error fetching profile:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadChatRooms = async () => {
+    try {
+      setChatRoomsLoading(true);
+      setChatRoomsError('');
+      const response = await fetchChatRooms();
+      const rooms = response.data || response;
+      setChatRooms(rooms);
+    } catch (err) {
+      console.error('Error fetching chat rooms:', err);
+      setChatRoomsError(err.response?.data?.message || err.message || 'Lỗi khi tải danh sách tin nhắn');
+    } finally {
+      setChatRoomsLoading(false);
+    }
+  };
+
+  const scrollChatToBottom = () => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  };
+
+  const handleSelectRoom = async (room) => {
+    setSelectedRoom(room);
+    setRoomMessages([]);
+    setChatError('');
+    try {
+      setRoomMessagesLoading(true);
+      const response = await fetchChatMessages(room.roomId, { limit: 50 });
+      const messages = response.data || response;
+      setRoomMessages(messages);
+      setTimeout(scrollChatToBottom, 50);
+    } catch (err) {
+      console.error('Error loading room messages:', err);
+      setChatError(err.response?.data?.message || err.message || 'Lỗi khi tải tin nhắn');
+    } finally {
+      setRoomMessagesLoading(false);
+    }
+  };
+
+  const handleSendRoomMessage = async (event) => {
+    event.preventDefault();
+    if (!selectedRoom || !chatInput.trim()) return;
+
+    try {
+      setChatSending(true);
+      const response = await sendChatMessage(selectedRoom.roomId, chatInput.trim());
+      const messageData = response.data || response;
+
+      setRoomMessages((prev) => [
+        ...prev,
+        {
+          messageId: messageData.messageId,
+          senderId: messageData.senderId,
+          text: messageData.text,
+          timestamp: messageData.timestamp,
+        },
+      ]);
+      setChatInput('');
+      setTimeout(scrollChatToBottom, 50);
+    } catch (err) {
+      console.error('Error sending chat message:', err);
+      setChatError(err.response?.data?.message || err.message || 'Lỗi khi gửi tin nhắn');
+    } finally {
+      setChatSending(false);
     }
   };
 
@@ -166,8 +257,8 @@ function ProfilePage() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
       <div className="container py-8">
-        <div className="grid grid-1" style={{ maxWidth: '600px', margin: '0 auto' }}>
-          {/* Thông tin cá nhân (luôn hiển thị) */}
+        <div className="grid grid-1" style={{ maxWidth: '900px', margin: '0 auto', gap: '1.5rem' }}>
+          {/* Thông tin cá nhân */}
           <div className="card p-6">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 className="text-2xl font-bold" style={{ color: 'var(--text-heading)' }}>Thông tin cá nhân</h2>
@@ -193,6 +284,133 @@ function ProfilePage() {
               <p style={{ color: 'var(--text-body)' }}><strong style={{ color: 'var(--text-heading)' }}>Username:</strong> {profile.username || '—'}</p>
               <p style={{ color: 'var(--text-body)' }}><strong style={{ color: 'var(--text-heading)' }}>Role:</strong> {userData.role || 'user'}</p>
               <p style={{ color: 'var(--text-body)' }}><strong style={{ color: 'var(--text-heading)' }}>Tình trạng:</strong> {userData.isActive === false ? '❌ Deactivated' : '✅ Active'}</p>
+            </div>
+          </div>
+
+          {/* Tin nhắn của tôi */}
+          <div className="card p-6">
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-heading)' }}>Tin nhắn của tôi</h2>
+            {chatRoomsError && <div className="error-message mb-3">{chatRoomsError}</div>}
+
+            <div className="profile-chat-layout">
+              <div className="profile-chat-rooms">
+                <div className="profile-chat-rooms-header">
+                  <span>Cuộc trò chuyện</span>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-xs"
+                    onClick={loadChatRooms}
+                    disabled={chatRoomsLoading}
+                  >
+                    {chatRoomsLoading ? 'Đang tải...' : 'Làm mới'}
+                  </button>
+                </div>
+
+                {chatRoomsLoading && chatRooms.length === 0 ? (
+                  <p className="text-sm" style={{ color: 'var(--text-body)' }}>Đang tải cuộc trò chuyện...</p>
+                ) : chatRooms.length === 0 ? (
+                  <p className="text-sm" style={{ color: 'var(--text-body)' }}>
+                    Bạn chưa có cuộc trò chuyện nào với người bán.
+                  </p>
+                ) : (
+                  <ul className="profile-chat-room-list">
+                    {chatRooms.map((room) => (
+                      <li key={room.roomId}>
+                        <button
+                          type="button"
+                          className={`profile-chat-room-item ${
+                            selectedRoom?.roomId === room.roomId ? 'profile-chat-room-item--active' : ''
+                          }`}
+                          onClick={() => handleSelectRoom(room)}
+                        >
+                          <div className="profile-chat-room-title">
+                            ID đối tác: {room.otherParticipantId}
+                          </div>
+                          {room.lastMessageText && (
+                            <div className="profile-chat-room-last">
+                              {room.lastMessageText}
+                            </div>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="profile-chat-messages">
+                {selectedRoom ? (
+                  <>
+                    <div className="profile-chat-messages-header">
+                      <div>
+                        <div className="profile-chat-messages-title">
+                          Chat với ID: {selectedRoom.otherParticipantId}
+                        </div>
+                      </div>
+                      {chatError && <div className="chat-panel-error">{chatError}</div>}
+                    </div>
+
+                    <div className="chat-panel-body">
+                      {roomMessagesLoading ? (
+                        <div className="chat-panel-loading">Đang tải tin nhắn...</div>
+                      ) : roomMessages.length === 0 ? (
+                        <div className="chat-panel-empty">
+                          Chưa có tin nhắn nào trong cuộc trò chuyện này.
+                        </div>
+                      ) : (
+                        <div className="chat-messages">
+                          {roomMessages.map((msg) => {
+                            const isMine = msg.senderId === (user?.user_id || userData._id);
+                            const timeLabel = msg.timestamp
+                              ? new Date(msg.timestamp).toLocaleTimeString('vi-VN', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : '';
+
+                            return (
+                              <div
+                                key={msg.messageId}
+                                className={`chat-message-row ${isMine ? 'chat-message-row--mine' : 'chat-message-row--other'}`}
+                              >
+                                <div className="chat-message-bubble">
+                                  <div className="chat-message-text">{msg.text}</div>
+                                  {timeLabel && (
+                                    <div className="chat-message-time">{timeLabel}</div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          <div ref={chatEndRef} />
+                        </div>
+                      )}
+                    </div>
+
+                    <form className="chat-panel-footer" onSubmit={handleSendRoomMessage}>
+                      <input
+                        type="text"
+                        className="form-input chat-input"
+                        placeholder="Nhập tin nhắn..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        disabled={chatSending}
+                      />
+                      <button
+                        type="submit"
+                        className="btn btn-primary chat-send-button"
+                        disabled={chatSending || !chatInput.trim()}
+                      >
+                        {chatSending ? 'Đang gửi...' : 'Gửi'}
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <div className="chat-panel-empty">
+                    Chọn một cuộc trò chuyện ở bên trái để xem nội dung tin nhắn.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

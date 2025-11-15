@@ -1,25 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import '../css/HomePage.css';
-
-const IconSearch = () => (
-  <svg
-    className="icon-svg"
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="11" cy="11" r="8"></circle>
-    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-  </svg>
-);
 
 const IconImagePlaceholder = () => (
   <svg
@@ -159,13 +141,100 @@ const INSIGHT_CARDS = [
 const HERO_BAR_HEIGHTS = [42, 68, 52, 80, 58, 72];
 
 function HomePage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [submittedSearch, setSubmittedSearch] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({
+    location: '',
+    model: '',
+    minPrice: '',
+    maxPrice: '',
+  });
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const location = useLocation();
+
+  const hasActiveFilter =
+    filters.location || filters.model || filters.minPrice || filters.maxPrice;
+
+  const handleFilterChange = (event) => {
+    const { name, value } = event.target;
+    setFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      location: '',
+      model: '',
+      minPrice: '',
+      maxPrice: '',
+    });
+  };
+
+  const handleToggleFilter = () => {
+    setFilterOpen((prev) => !prev);
+  };
+
+  const filteredListings = useMemo(() => {
+    if (!listings || listings.length === 0) return [];
+
+    return listings.filter((item) => {
+      const {
+        location: filterLocation,
+        model: filterModel,
+        minPrice,
+        maxPrice,
+      } = filters;
+
+      // Filter by location (partial match, case-insensitive)
+      if (filterLocation) {
+        const itemLocation = (item.location || '').toString().toLowerCase();
+        if (!itemLocation.includes(filterLocation.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Filter by model (for Vehicle category, use vehicle_model if available)
+      if (filterModel) {
+        const itemModel =
+          (item.vehicle_model ||
+            item.model ||
+            item.vehicleModel ||
+            '').toString().toLowerCase();
+
+        if (!itemModel.includes(filterModel.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Normalize price to number (if possible)
+      let priceValue = item.price;
+      if (typeof priceValue === 'string') {
+        const numeric = parseFloat(priceValue.replace(/[^\d.]/g, ''));
+        priceValue = Number.isNaN(numeric) ? undefined : numeric;
+      }
+
+      // Filter by min price
+      if (minPrice) {
+        const minVal = Number(minPrice);
+        if (!Number.isNaN(minVal)) {
+          if (!priceValue || priceValue < minVal) return false;
+        }
+      }
+
+      // Filter by max price
+      if (maxPrice) {
+        const maxVal = Number(maxPrice);
+        if (!Number.isNaN(maxVal)) {
+          if (!priceValue || priceValue > maxVal) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [listings, filters]);
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -174,8 +243,7 @@ function HomePage() {
 
         const urlParams = new URLSearchParams(location.search);
         const category = urlParams.get('category') || '';
-        const q = encodeURIComponent(submittedSearch.trim());
-        const path = `/search/listings/?q=${q}&sort_by=${sortBy}&limit=12&category=${category}`;
+        const path = `/search/listings/?q=&sort_by=newest&limit=12&category=${category}`;
 
         let data;
         try {
@@ -207,7 +275,7 @@ function HomePage() {
     };
 
     fetchListings();
-  }, [location.search, sortBy, submittedSearch]);
+  }, [location.search]);
 
   useEffect(() => {
     if (location.hash === '#product-grid' && !loading) {
@@ -242,11 +310,6 @@ function HomePage() {
     return () => observer.disconnect();
   }, [listings, loading]);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    setSubmittedSearch(searchQuery.trim());
-  };
-
   return (
     <div className="homepage">
       <section className="hero-section">
@@ -262,7 +325,7 @@ function HomePage() {
                 Đăng tin ngay
               </Link>
               <a href="#product-grid" className="btn hero-action hero-secondary">
-                Khám phá sản phẩm
+                Tin đăng nổi bật
               </a>
             </div>
             <div className="hero-meta">
@@ -318,55 +381,6 @@ function HomePage() {
         </div>
         <span className="hero-shape hero-shape-1" />
         <span className="hero-shape hero-shape-2" />
-      </section>
-
-      <section className="search-section">
-        <div className="container">
-          <div className="search-card reveal-item">
-            <h2>Tìm kiếm sản phẩm phù hợp nhất</h2>
-            <p className="search-subtitle">
-              Sử dụng bộ lọc thông minh để tìm đúng pin, xe điện hoặc phụ tùng bạn đang cần.
-            </p>
-            <form onSubmit={handleSearchSubmit} className="search-form">
-              <div className="search-input-group">
-                <span className="search-input-icon">
-                  <IconSearch />
-                </span>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm xe điện, pin lithium, trạm sạc..."
-                  className="form-input search-input"
-                />
-              </div>
-              <button type="submit" className="btn btn-primary search-button">
-                Tìm kiếm
-              </button>
-            </form>
-            <div className="search-meta">
-              <div className="search-info">
-                <span className="info-icon" aria-hidden="true">
-                  ✨
-                </span>
-                <span>Từ khóa phổ biến: "pin lithium LFP", "xe điện fleet", "trạm sạc DC".</span>
-              </div>
-              <div className="sort-control">
-                <label htmlFor="sort-by">Sắp xếp theo</label>
-                <select
-                  id="sort-by"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="form-input sort-select"
-                >
-                  <option value="newest">Mới nhất</option>
-                  <option value="price_asc">Giá tăng</option>
-                  <option value="price_desc">Giá giảm</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
       </section>
 
       <section className="stats-section">
@@ -494,18 +508,111 @@ function HomePage() {
                 Từ pin tái chế đến trạm sạc nhanh – tất cả đều được kiểm duyệt kỹ càng trước khi hiển thị.
               </p>
             </div>
-            {!loading && listings.length > 0 && (
+            {!loading && filteredListings.length > 0 && (
               <p className="product-meta">
-                Đang hiển thị <strong>{listings.length}</strong> tin phù hợp.
+                Đang hiển thị <strong>{filteredListings.length}</strong> tin phù hợp.
               </p>
             )}
           </div>
+
+          {/* Thanh nav nhỏ: nút "Lọc" để xổ bộ lọc */}
+          <div className="filter-toggle-row">
+            <button
+              type="button"
+              className="filter-toggle-button"
+              onClick={handleToggleFilter}
+            >
+              <span className="filter-toggle-label">Lọc</span>
+              <span
+                className={`filter-toggle-icon ${
+                  filterOpen || hasActiveFilter ? 'filter-toggle-icon--open' : ''
+                }`}
+                aria-hidden="true"
+              >
+                ▾
+              </span>
+            </button>
+          </div>
+
+          {/* Bộ lọc sản phẩm tương tự Chợ Tốt (Location, Model, Giá) */}
+          {(filterOpen || hasActiveFilter) && (
+          <div className="filter-bar card">
+            <div className="filter-bar-row">
+              <div className="filter-field">
+                <label className="filter-label" htmlFor="filter-location">
+                  Khu vực
+                </label>
+                <input
+                  id="filter-location"
+                  name="location"
+                  type="text"
+                  placeholder="VD: Hà Nội, TP.HCM..."
+                  className="form-input filter-input"
+                  value={filters.location}
+                  onChange={handleFilterChange}
+                />
+              </div>
+
+              <div className="filter-field">
+                <label className="filter-label" htmlFor="filter-model">
+                  Mẫu xe / Model
+                </label>
+                <input
+                  id="filter-model"
+                  name="model"
+                  type="text"
+                  placeholder="VD: VF8, VF e34..."
+                  className="form-input filter-input"
+                  value={filters.model}
+                  onChange={handleFilterChange}
+                />
+              </div>
+
+              <div className="filter-field filter-price-group">
+                <span className="filter-label">Khoảng giá (VND)</span>
+                <div className="filter-price-inputs">
+                  <input
+                    name="minPrice"
+                    type="number"
+                    min="0"
+                    placeholder="Giá tối thiểu"
+                    className="form-input filter-input"
+                    value={filters.minPrice}
+                    onChange={handleFilterChange}
+                  />
+                  <span className="filter-price-separator">-</span>
+                  <input
+                    name="maxPrice"
+                    type="number"
+                    min="0"
+                    placeholder="Giá tối đa"
+                    className="form-input filter-input"
+                    value={filters.maxPrice}
+                    onChange={handleFilterChange}
+                  />
+                </div>
+              </div>
+
+              <div className="filter-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary filter-button"
+                  onClick={handleClearFilters}
+                  disabled={loading}
+                >
+                  Xóa lọc
+                </button>
+              </div>
+            </div>
+          </div>
+          )}
+
           {loading ? (
             <div className="loading-state">
               <div className="loading-spinner-simple"></div>
               <p>Đang tải sản phẩm...</p>
             </div>
-          ) : listings.length === 0 ? (
+          ) : filteredListings.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">
                 <IconEmptyBox />
@@ -517,7 +624,7 @@ function HomePage() {
             </div>
           ) : (
             <div className="product-grid">
-              {listings.map((listing, index) => {
+              {filteredListings.map((listing, index) => {
                 const listingId = listing._id || listing.id;
                 const imageUrl = listing.images && listing.images[0];
 

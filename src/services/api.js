@@ -1,8 +1,11 @@
 import axios from 'axios';
 
 // Tạo axios instance dùng chung
+// Ưu tiên dùng biến môi trường để có thể đổi giữa local / production
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -58,4 +61,3 @@ export const downloadFile = async (url, filename) => {
 };
 
 export default api;
-

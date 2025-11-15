@@ -12,6 +12,8 @@ import WishlistPage from './pages/WishlistPage';
 import ProfilePage from './pages/ProfilePage';
 import MyListingsPage from './pages/MyListingsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import AuctionsPage from './pages/AuctionsPage';
+import AuctionDetailPage from './pages/AuctionDetailPage';
 import './App.css';
 import logo from './assets/Logo_EVB_Light.png';
 
@@ -25,10 +27,12 @@ const IconChevronDown = () => (
 function Navigation() {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // MỚI: State và Ref cho dropdown
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Logic useEffect để lấy user (giữ nguyên)
   useEffect(() => {
@@ -64,6 +68,12 @@ function Navigation() {
     };
   }, [dropdownRef]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const currentQuery = params.get('q') || '';
+    setSearchTerm(currentQuery);
+  }, [location.search]);
+
   const handleLogout = () => {
     localStorage.removeItem('evb_token');
     localStorage.removeItem('evb_user');
@@ -77,6 +87,21 @@ function Navigation() {
     navigate(path);
   };
 
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    const trimmedQuery = searchTerm.trim();
+    setIsDropdownOpen(false);
+    if (trimmedQuery) {
+      navigate(`/products?q=${encodeURIComponent(trimmedQuery)}`);
+    } else {
+      navigate('/products');
+    }
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
   return (
     <nav className="nav">
       <div className="nav-container">
@@ -86,8 +111,25 @@ function Navigation() {
             <img src={logo} alt="EVB Logo" className="nav-logo-image" />
           </Link>
           
-          {/* 2. Các nút bên phải */}
-          <div className="nav-links">
+          <div className="nav-actions">
+            <form className="nav-search" onSubmit={handleSearchSubmit}>
+              <input
+                type="text"
+                className="nav-search-input"
+                placeholder="Tìm kiếm sản phẩm..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+              />
+              <button type="submit" className="nav-search-button">
+                Tìm kiếm
+              </button>
+            </form>
+
+            {/* 2. Các nút bên phải */}
+            <div className="nav-links">
+            <Link to="/auctions" className="nav-link">
+              Đấu giá
+            </Link>
             {user ? (
               // === GIAO DIỆN KHI ĐÃ ĐĂNG NHẬP ===
               <>
@@ -150,6 +192,7 @@ function Navigation() {
               </>
             )}
           </div>
+          </div>
         </div>
       </div>
     </nav>
@@ -194,6 +237,8 @@ function AppLayout() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/my-listings" element={<MyListingsPage />} />
             <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/auctions" element={<AuctionsPage />} />
+            <Route path="/auctions/:id" element={<AuctionDetailPage />} />
           </Routes>
         </div>
       </main>
