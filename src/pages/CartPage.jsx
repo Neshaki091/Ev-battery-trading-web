@@ -19,6 +19,14 @@ const IconCreditCard = () => (
 const IconDownload = () => (
   <svg className="icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
 );
+
+const IconView = () => (
+  <svg className="icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  </svg>
+);
+
 // === KẾT THÚC ICONS ===
 
 
@@ -328,84 +336,99 @@ function CartPage() {
             {/* CỘT TRÁI: DANH SÁCH GIAO DỊCH (ĐÃ CẬP NHẬT) */}
             <div style={{ gridColumn: 'span 2' }}>
               <div className="card">
-                {cartItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col md:flex-row items-center gap-4 p-4"
-                    style={{ borderBottom: '1px solid var(--color-border)' }}
-                  >
-                    {/* Hình ảnh */}
+                {cartItems.map((item) => {
+                  const listingId = item.details?.listing?._id;
+                  return (
                     <div
-                      className="flex-shrink-0"
-                      style={{
-                        width: '96px',
-                        height: '96px',
-                        borderRadius: 'var(--radius-md)',
-                        background: 'var(--bg-muted)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        overflow: 'hidden',
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => setSelectedTransaction(item)}
+                      key={item.id}
+                      className="flex flex-col md:flex-row items-center gap-4 p-4"
+                      style={{ borderBottom: '1px solid var(--color-border)' }}
                     >
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <div style={{ color: 'var(--text-body)' }}>
-                          <IconImagePlaceholder />
-                        </div>
-                      )}
-                    </div>
+                      {/* Hình ảnh */}
+                      <div
+                        className="flex-shrink-0"
+                        style={{
+                          width: '96px',
+                          height: '96px',
+                          borderRadius: 'var(--radius-md)',
+                          background: 'var(--bg-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          overflow: 'hidden',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setSelectedTransaction(item)}
+                      >
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div style={{ color: 'var(--text-body)' }}>
+                            <IconImagePlaceholder />
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Thông tin chính */}
-                    <div
-                      style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}
-                      onClick={() => setSelectedTransaction(item)}
-                    >
-                      <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-heading)' }}>
-                        {item.name}
-                      </h3>
-                      <p className="font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        {item.price ? `${item.price.toLocaleString('vi-VN')} VND` : 'Liên hệ'}
-                      </p>
-                      <div className="mt-1">
-                        <StatusBadge status={item.status} />
+                      {/* Thông tin chính */}
+                      <div
+                        style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}
+                        onClick={() => setSelectedTransaction(item)}
+                      >
+                        <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-heading)' }}>
+                          {item.name}
+                        </h3>
+                        <p className="font-semibold" style={{ color: 'var(--color-primary)' }}>
+                          {item.price ? `${item.price.toLocaleString('vi-VN')} VND` : 'Liên hệ'}
+                        </p>
+                        <div className="mt-1">
+                          <StatusBadge status={item.status} />
+                        </div>
+                      </div>
+
+                      {/* Cột bên phải: nút hành động */}
+                      <div className="flex-shrink-0 flex flex-col items-end gap-2">
+                        {item.status === 'pending' && (
+                          <button
+                            onClick={() => handlePayOrder(item.id)}
+                            className="btn btn-primary flex items-center justify-center gap-2"
+                            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                          >
+                            <IconCreditCard />
+                            Thanh toán
+                          </button>
+                        )}
+
+                        {item.status === 'paid' && (
+                          <button
+                            onClick={() => handleDownloadContract(item.id)}
+                            className="btn btn-secondary flex items-center justify-center gap-2"
+                            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                          >
+                            <IconDownload />
+                            Tải Hợp Đồng
+                          </button>
+
+                        )}
+                        {listingId && (
+                          <Link
+                            to={`/products/${listingId}`}
+                            rel="noopener noreferrer"
+                            className="btn btn-secondary flex items-center justify-center gap-2"
+                            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                          >
+                            <IconView />
+                            Xem Tin Đăng
+                          </Link>
+                        )}
                       </div>
                     </div>
 
-                    {/* Cột bên phải: nút hành động */}
-                    <div className="flex-shrink-0 flex flex-col items-end gap-2">
-                      {item.status === 'pending' && (
-                        <button
-                          onClick={() => handlePayOrder(item.id)}
-                          className="btn btn-primary flex items-center justify-center gap-2"
-                          style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-                        >
-                          <IconCreditCard />
-                          Thanh toán
-                        </button>
-                      )}
-
-                      {item.status === 'paid' && (
-                        <button
-                          onClick={() => handleDownloadContract(item.id)}
-                          className="btn btn-secondary flex items-center justify-center gap-2"
-                          style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-                        >
-                          <IconDownload />
-                          Tải Hợp Đồng
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                ))}
+                  )
+                })}
               </div>
             </div>
 

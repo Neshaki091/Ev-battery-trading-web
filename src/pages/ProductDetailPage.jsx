@@ -443,14 +443,26 @@ function ProductDetailPage() {
 
               {/* NÚT HÀNH ĐỘNG */}
               <div className="flex gap-2 mb-2">
-                <button
-                  onClick={handleBuy}
-                  disabled={!token}
-                  className="btn btn-primary flex-1"
-                  style={{ opacity: !token ? 0.5 : 1 }}
-                >
-                  Mua ngay
-                </button>
+                {product.status === 'Sold' ? (
+                  // 1. Nếu đã bán: Hiển thị nút "Đã bán" và vô hiệu hóa nó
+                  <button
+                    disabled
+                    className="btn btn-secondary flex-1" // Đổi sang style "secondary" (hoặc "disabled")
+                    style={{ opacity: 0.7, cursor: 'not-allowed' }}
+                  >
+                    Đã bán
+                  </button>
+                ) : (
+                  // 2. Nếu chưa bán: Giữ logic "Mua ngay" cũ
+                  <button
+                    onClick={handleBuy}
+                    disabled={!token}
+                    className="btn btn-primary flex-1"
+                    style={{ opacity: !token ? 0.5 : 1 }}
+                  >
+                    Mua ngay
+                  </button>
+                )}
                 <button
                   onClick={handleAddToWishlist}
                   disabled={!token}

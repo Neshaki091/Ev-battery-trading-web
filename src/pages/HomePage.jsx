@@ -542,17 +542,21 @@ function HomePage() {
                           </div>
                         </div>
                       )}
+
+                      {/* ⭐️ THÊM NHÃN "ĐÃ BÁN" NẾU STATUS LÀ 'SOLD' ⭐️ */}
+                      {listing.status === 'Sold' && (
+                        <div className="product-sold-badge">
+                          Đã bán
+                        </div>
+                      )}
                     </div>
                     <div className="product-info">
+                      {/* ... (Phần còn lại của code giữ nguyên) ... */}
                       <h3 className="product-title font-semibold text-lg">
                         {listing.title || 'Sản phẩm không tên'}
                       </h3>
                       <p className="product-description text-sm">
-                        {listing.description
-                          ? `${listing.description.substring(0, 80)}${
-                              listing.description.length > 80 ? '...' : ''
-                            }`
-                          : 'Không có mô tả'}
+                        {/* ... (description) ... */}
                       </p>
                       <p className="product-price text-lg font-bold mt-3">
                         {listing.price ? `${listing.price.toLocaleString('vi-VN')} VND` : 'Liên hệ'}

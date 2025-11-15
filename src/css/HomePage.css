@@ -847,11 +847,33 @@
   animation: fade-up 0.7s ease forwards;
 }
 
+.product-sold-badge {
+  position: absolute;
+  top: 0.75rem;
+  /* 12px */
+  left: 0.75rem;
+  /* 12px */
+  background-color: rgba(40, 40, 40, 0.75);
+  /* Màu tối mờ */
+  color: white;
+  padding: 0.25rem 0.75rem;
+  /* 4px 12px */
+  border-radius: 9999px;
+  /* Bo tròn */
+  font-size: 0.875rem;
+  /* 14px */
+  font-weight: 600;
+  z-index: 10;
+  /* Đảm bảo nó không bị tràn nếu ảnh nhỏ */
+  max-width: calc(100% - 1.5rem);
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;
     transform: translateY(24px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -859,20 +881,24 @@
 }
 
 @keyframes floaty {
+
   0%,
   100% {
     transform: translate3d(0, 0, 0);
   }
+
   50% {
     transform: translate3d(0, -12px, 0);
   }
 }
 
 @keyframes sparkline-pulse {
+
   0%,
   100% {
     transform: scaleY(1);
   }
+
   50% {
     transform: scaleY(1.1);
   }

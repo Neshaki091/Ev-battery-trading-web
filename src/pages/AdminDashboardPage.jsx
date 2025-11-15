@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer
+} from 'recharts';
+
 function AdminDashboardPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('listings');
@@ -412,15 +423,21 @@ function AdminFeesTab() {
 function AdminAnalyticsTab() {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  // State cho bộ lọc
+  const [period, setPeriod] = useState('month'); // 'today', 'week', 'month', 'year', 'all'
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth() + 1); // 1-12
 
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [period, month, year]); // Fetch lại khi bất kỳ bộ lọc nào thay đổi
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/analytics/summary?days=30');
+      const response = await api.get('/analytics/summary', {
+        params: { period, month, year }
+      });
       setAnalytics(response.data);
     } catch (err) {
       console.error('Error fetching analytics:', err);
@@ -429,22 +446,223 @@ function AdminAnalyticsTab() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="loading-container text-center py-8">
-        <div className="loading-spinner-simple"></div>
-        <p className="mt-4" style={{ color: 'var(--text-body)' }}>Đang tải...</p>
-      </div>
-    );
-  }
+  if (loading) {
+    return (
+      <div className="loading-container text-center py-8">
+        <div className="loading-spinner-simple"></div>
+        <p className="mt-4" style={{ color: 'var(--text-body)' }}>Đang tải...</p>
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return <p>Không thể tải dữ liệu thống kê.</p>;
+  }
+
+  // Định dạng dữ liệu cho biểu đồ
+  // API mới trả về chartData và dataGrouping
+  const chartData = (analytics.chartData || []).map(item => {
+    const isMonthly = analytics.dataGrouping === 'monthly';
+    let dateValue = item.date;
+    
+    // Nếu là monthly và có _id (format: 'YYYY-MM'), tạo date từ _id
+    if (isMonthly && item._id && !dateValue) {
+      dateValue = new Date(item._id + '-01');
+    } else if (isMonthly && item._id) {
+      // Nếu có cả _id và date, ưu tiên date nhưng đảm bảo nó là Date object
+      dateValue = dateValue instanceof Date ? dateValue : new Date(dateValue);
+    } else {
+      dateValue = dateValue ? new Date(dateValue) : new Date();
+    }
+    
+    return {
+      ...item,
+      // Format date '13/11' (daily) hoặc '11/2025' (monthly)
+      dateLabel: dateValue.toLocaleDateString('vi-VN', {
+        day: isMonthly ? undefined : '2-digit',
+        month: '2-digit',
+        year: isMonthly ? 'numeric' : undefined
+      })
+    };
+  });
+
+  const summary = analytics.summary || {};
+
+  // Tạo danh sách năm (từ năm hiện tại trở về trước 5 năm)
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
   return (
     <div>
-      <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--text-heading)' }}>Thống kê 30 ngày</h3>
-      <pre style={{ color: 'var(--text-body)', background: 'var(--bg-muted)', padding: '1rem', borderRadius: 'var(--radius-md)', overflow: 'auto' }}>
-        {JSON.stringify(analytics?.summary || {}, null, 2)}
-      </pre>
+      <h3 className="text-xl font-bold mb-4" style={{ color: 'var(--text-heading)' }}>Thống kê</h3>
+
+      {/* Bộ lọc */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Chọn Period */}
+        <select 
+          value={period} 
+          onChange={(e) => setPeriod(e.target.value)} 
+          className="form-input"
+          style={{ minWidth: '150px' }}
+        >
+          <option value="today">Hôm nay</option>
+          <option value="week">Tuần này</option>
+          <option value="month">Theo Tháng</option>
+          <option value="year">Theo Năm</option>
+          <option value="all">Từ trước đến giờ</option>
+        </select>
+
+        {/* Chọn Tháng (chỉ hiển thị khi period='month') */}
+        {period === 'month' && (
+          <select 
+            value={month} 
+            onChange={(e) => setMonth(parseInt(e.target.value))} 
+            className="form-input"
+            style={{ minWidth: '120px' }}
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+              <option key={m} value={m}>
+                Tháng {m}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Chọn Năm (hiển thị khi period='month' hoặc 'year') */}
+        {(period === 'month' || period === 'year') && (
+          <select 
+            value={year} 
+            onChange={(e) => setYear(parseInt(e.target.value))} 
+            className="form-input"
+            style={{ minWidth: '120px' }}
+          >
+            {years.map(y => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Hiển thị các thẻ tổng quan */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <StatCard 
+          title="Tổng Doanh Thu (Hoa hồng)" 
+          value={summary.totalCommission?.toLocaleString('vi-VN') + ' đ'} 
+        />
+        <StatCard 
+          title="Tổng GT Giao dịch" 
+          value={summary.totalRevenue?.toLocaleString('vi-VN') + ' đ'} 
+        />
+        <StatCard 
+          title="Người Dùng Mới" 
+          value={summary.totalNewUsers?.toLocaleString('vi-VN')} 
+        />
+        <StatCard 
+          title="Tin Đăng Mới" 
+          value={summary.totalNewListings?.toLocaleString('vi-VN')} 
+        />
+      </div>
+
+      {/* Vẽ 4 Biểu đồ riêng biệt */}
+      <h3 className="text-xl font-bold mb-4 mt-8" style={{ color: 'var(--text-heading)' }}>Biểu đồ Xu hướng</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Biểu đồ 1: Doanh thu (Hoa hồng) */}
+        <ChartBox title="Doanh thu (Hoa hồng)">
+          <ReusableAnalyticsChart data={chartData} dataKey="totalCommission" color="#8884d8" />
+        </ChartBox>
+
+        {/* Biểu đồ 2: Tổng GT Giao dịch (totalRevenue) */}
+        <ChartBox title="Tổng Giá trị Giao dịch">
+          <ReusableAnalyticsChart data={chartData} dataKey="totalRevenue" color="#ff7300" />
+        </ChartBox>
+
+        {/* Biểu đồ 3: Người dùng mới */}
+        <ChartBox title="Người dùng mới">
+          <ReusableAnalyticsChart data={chartData} dataKey="newUsers" color="#82ca9d" />
+        </ChartBox>
+
+        {/* Biểu đồ 4: Tin đăng mới */}
+        <ChartBox title="Tin đăng mới">
+          <ReusableAnalyticsChart data={chartData} dataKey="newListings" color="#ffc658" />
+        </ChartBox>
+      </div>
+
+    </div>
+  );
+}
+
+// Component phụ: StatCard
+function StatCard({ title, value }) {
+  return (
+    <div style={{ 
+      background: 'var(--bg-muted)', 
+      padding: '1rem', 
+      borderRadius: 'var(--radius-md)',
+      border: '1px solid var(--border-color)'
+    }}>
+      <h4 className="text-sm font-medium mb-1" style={{ color: 'var(--text-body)' }}>
+        {title}
+      </h4>
+      <p className="text-2xl font-bold" style={{ color: 'var(--text-heading)' }}>
+        {value || 0}
+      </p>
     </div>
+  );
+}
+
+// Component bọc (wrapper) cho biểu đồ
+function ChartBox({ title, children }) {
+  return (
+    <div style={{ 
+      background: 'var(--bg-muted)', 
+      padding: '1rem', 
+      borderRadius: 'var(--radius-md)',
+      border: '1px solid var(--border-color)'
+    }}>
+      <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-heading)' }}>
+        {title}
+      </h4>
+      <div style={{ width: '100%', height: 300 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Component biểu đồ tái sử dụng
+function ReusableAnalyticsChart({ data, dataKey, color }) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart 
+        data={data} 
+        margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+        <XAxis dataKey="dateLabel" stroke="var(--text-body)" />
+        <YAxis 
+          stroke="var(--text-body)"
+          tickFormatter={(value) => 
+            value > 1000000 ? `${value / 1000000}tr` : (value > 1000 ? `${value / 1000}k` : value)
+          }
+        />
+        <Tooltip 
+          contentStyle={{ 
+            background: 'var(--bg-popover)', 
+            borderColor: 'var(--border-color)' 
+          }}
+        />
+        <Line 
+          type="monotone" 
+          dataKey={dataKey} 
+          stroke={color} 
+          dot={false} 
+          strokeWidth={2} 
+        />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }
 
