@@ -34,9 +34,12 @@ function ProfilePage() {
     email: '',
     phonenumber: '',
     username: '',
+    firstName: '',
+    lastName: '',
   });
   const [profileError, setProfileError] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
+
 
   useEffect(() => {
     const token = localStorage.getItem('evb_token');
@@ -48,6 +51,7 @@ function ProfilePage() {
     fetchProfile();
   }, [navigate]);
 
+
   const fetchProfile = async () => {
     try {
       setLoading(true);
@@ -58,6 +62,8 @@ function ProfilePage() {
         email: profile.email || '',
         phonenumber: profile.phonenumber || '',
         username: profile.username || '',
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
       });
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -65,6 +71,7 @@ function ProfilePage() {
       setLoading(false);
     }
   };
+
 
   // Đóng modal khi click ra ngoài hoặc nhấn ESC
   useEffect(() => {
@@ -102,7 +109,9 @@ function ProfilePage() {
       await api.put(`/auth/users/${userId}`, {
         email: profileForm.email,
         phonenumber: profileForm.phonenumber,
-        username: profileForm.username,
+        // Username không được gửi vì không thể thay đổi
+        firstName: profileForm.firstName,
+        lastName: profileForm.lastName,
       });
 
       alert('Cập nhật profile thành công');
@@ -114,7 +123,9 @@ function ProfilePage() {
           ...userData.profile, 
           email: profileForm.email,
           phonenumber: profileForm.phonenumber,
-          username: profileForm.username 
+          username: profileForm.username,
+          firstName: profileForm.firstName,
+          lastName: profileForm.lastName,
         } 
       };
       localStorage.setItem('evb_user', JSON.stringify(updatedUser));
@@ -166,8 +177,8 @@ function ProfilePage() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
       <div className="container py-8">
-        <div className="grid grid-1" style={{ maxWidth: '600px', margin: '0 auto' }}>
-          {/* Thông tin cá nhân (luôn hiển thị) */}
+        <div className="grid grid-1" style={{ maxWidth: '900px', margin: '0 auto', gap: '1.5rem' }}>
+          {/* Thông tin cá nhân */}
           <div className="card p-6">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 className="text-2xl font-bold" style={{ color: 'var(--text-heading)' }}>Thông tin cá nhân</h2>
@@ -188,6 +199,8 @@ function ProfilePage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <p style={{ color: 'var(--text-body)' }}><strong style={{ color: 'var(--text-heading)' }}>ID:</strong> {user?.user_id || userData._id || '—'}</p>
+              <p style={{ color: 'var(--text-body)' }}><strong style={{ color: 'var(--text-heading)' }}>Họ:</strong> {profile.firstName || '—'}</p>
+              <p style={{ color: 'var(--text-body)' }}><strong style={{ color: 'var(--text-heading)' }}>Tên:</strong> {profile.lastName || '—'}</p>
               <p style={{ color: 'var(--text-body)' }}><strong style={{ color: 'var(--text-heading)' }}>Email:</strong> {profile.email || '—'}</p>
               <p style={{ color: 'var(--text-body)' }}><strong style={{ color: 'var(--text-heading)' }}>Phone:</strong> {profile.phonenumber || '—'}</p>
               <p style={{ color: 'var(--text-body)' }}><strong style={{ color: 'var(--text-heading)' }}>Username:</strong> {profile.username || '—'}</p>
@@ -195,6 +208,7 @@ function ProfilePage() {
               <p style={{ color: 'var(--text-body)' }}><strong style={{ color: 'var(--text-heading)' }}>Tình trạng:</strong> {userData.isActive === false ? '❌ Deactivated' : '✅ Active'}</p>
             </div>
           </div>
+
         </div>
       </div>
 
@@ -313,14 +327,44 @@ function ProfilePage() {
                       />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Tên (Username)</label>
+                      <label className="form-label">Họ</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Họ"
+                        value={profileForm.firstName}
+                        onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Tên</label>
                       <input
                         type="text"
                         className="form-input"
                         placeholder="Tên"
-                        value={profileForm.username}
-                        onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
+                        value={profileForm.lastName}
+                        onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
                       />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Tên đăng nhập (Username)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Tên đăng nhập"
+                        value={profileForm.username}
+                        disabled
+                        readOnly
+                        style={{ 
+                          backgroundColor: 'var(--bg-muted)', 
+                          cursor: 'not-allowed',
+                          opacity: 0.7
+                        }}
+                        title="Username không thể thay đổi (tự động từ email)"
+                      />
+                      <small style={{ color: 'var(--text-body)', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                        Username không thể thay đổi. Nó được tự động tạo từ email của bạn.
+                      </small>
                     </div>
                     <button
                       type="submit"

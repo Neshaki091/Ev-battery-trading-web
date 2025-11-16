@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 
@@ -53,6 +53,7 @@ function ProductDetailPage() {
   const [showSellerInfo, setShowSellerInfo] = useState(false);
   const [showSellerOrders, setShowSellerOrders] = useState(false);
 
+
   // === Logic (Toàn bộ logic giữ nguyên) ===
   useEffect(() => {
     const userDataString = localStorage.getItem('evb_user');
@@ -96,10 +97,23 @@ function ProductDetailPage() {
             try {
               const sellerResponse = await api.get(`/auth/seller/${sellerIdValue}`);
               const sellerData = sellerResponse.data.data || sellerResponse.data;
+              // Đảm bảo có _id hoặc id
+              if (sellerData && !sellerData._id && sellerData.id) {
+                sellerData._id = sellerData.id;
+              }
+              // Nếu vẫn không có _id, dùng sellerIdValue làm _id
+              if (sellerData && !sellerData._id) {
+                sellerData._id = sellerIdValue;
+              }
               setSeller(sellerData);
             } catch (err) {
               console.error('Error fetching seller:', err);
-              setSeller({ username: 'Không rõ', phonenumber: 'N/A', email: 'N/A' });
+              setSeller({ 
+                _id: sellerIdValue, 
+                username: 'Không rõ', 
+                phonenumber: 'N/A', 
+                email: 'N/A' 
+              });
             }
           } else {
             setSeller({ username: 'Không rõ', phonenumber: 'N/A', email: 'N/A' });
@@ -142,6 +156,7 @@ function ProductDetailPage() {
     fetchAuthorNames();
   }, [reviews]);
 
+
   const loadReviews = async () => { /* (Giữ nguyên) */
     try {
       const response = await api.get(`/reviews/listing/${id}`);
@@ -176,11 +191,21 @@ function ProductDetailPage() {
     if (!price || price <= 0) { alert('Lỗi: Sản phẩm này không có giá hoặc giá không hợp lệ.'); return; }
     if (!sellerId) { alert('Lỗi: Không tìm thấy thông tin người bán của sản phẩm này.'); return; }
     try {
-      await api.post('/transactions/', { listingId: id, type: transactionType });
+      await api.post('/transactions/orders/', { listingId: id, type: transactionType });
       alert('Đã tạo đơn hàng');
       navigate('/cart');
     } catch (err) {
-      alert('Lỗi khi tạo đơn hàng: ' + (err.response?.data?.error || err.response?.data?.message || err.message));
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
+      if (err.response?.data?.requiresProfileUpdate) {
+        const shouldUpdate = window.confirm(
+          'Bạn phải cập nhật đầy đủ Họ và Tên trước khi thực hiện giao dịch.\n\nBạn có muốn chuyển đến trang Profile để cập nhật ngay bây giờ?'
+        );
+        if (shouldUpdate) {
+          navigate('/profile');
+        }
+      } else {
+        alert('Lỗi khi tạo đơn hàng: ' + errorMessage);
+      }
     }
   };
   const handleAddToWishlist = async () => { /* (Giữ nguyên) */
@@ -270,6 +295,50 @@ function ProductDetailPage() {
       alert('Lỗi: ' + (err.response?.data?.message || err.message));
     }
   };
+
+
+  const handleOpenChat = async () => {
+    // Lấy seller ID linh hoạt (_id hoặc id)
+    const sellerId = seller?._id || seller?.id;
+    
+    if (!sellerId) {
+      alert('Không tìm thấy thông tin người bán.');
+      return;
+    }
+
+    if (!currentUserId) {
+      alert('Bạn phải đăng nhập trước.');
+      navigate('/login');
+      return;
+    }
+
+    if (sellerId === currentUserId) {
+      alert('Bạn không thể nhắn tin với chính mình.');
+      return;
+    }
+
+    try {
+      // Gọi API để tạo hoặc lấy phòng chat
+      const response = await api.post('/chat/rooms', { 
+        receiverId: sellerId 
+      });
+      
+      // Backend trả về { success: true, roomId: "...", data: {...} }
+      const roomData = response.data || response;
+      const roomId = roomData?.roomId || roomData?.data?.roomId || roomData?._id || roomData?.id;
+      
+      if (!roomId) {
+        throw new Error('Không thể tạo hoặc lấy phòng chat.');
+      }
+
+      // Navigate đến trang chat với roomId
+      navigate(`/chat/${roomId}`);
+    } catch (err) {
+      console.error('Error creating/getting chat room:', err);
+      alert(err.response?.data?.message || err.message || 'Lỗi khi tạo cuộc trò chuyện');
+    }
+  };
+
 
   // === NÂNG CẤP: GUARD CLAUSES (Loading, Error, Not Found) ===
   if (loading) {
@@ -392,16 +461,32 @@ function ProductDetailPage() {
                     <p><strong>📞 Điện thoại:</strong> {seller.phonenumber || 'Không có'}</p>
                     <p><strong>✉️ Email:</strong> {seller.email || 'Không có'}</p>
 
+                    {(seller._id || seller.id) !== currentUserId && (
+                      <button
+                        type="button"
+                        onClick={handleOpenChat}
+                        className="btn btn-primary mt-3 text-sm"
+                      >
+                        Chat với người bán
+                      </button>
+                    )}
+
                     <button onClick={() => setShowSellerInfo(prev => !prev)} className="btn btn-secondary mt-2 text-sm">
                       {showSellerInfo ? 'Ẩn thông tin bổ sung' : 'Xem thông tin bổ sung'}
                     </button>
 
                     {showSellerInfo && (
                       <div className="mt-2 text-xs" style={{ color: 'var(--text-body)', background: 'var(--bg-card)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
-                        <p><strong>ID người bán:</strong> {seller._id}</p>
+                        <p><strong>ID người bán:</strong> {seller._id || seller.id || 'N/A'}</p>
                         <p><strong>Số đơn đã bán:</strong> {sellerOrders.length}</p>
                         <button
-                          onClick={() => { setShowSellerOrders(prev => !prev); if (!showSellerOrders) loadSellerOrders(seller._id); }}
+                          onClick={() => { 
+                            setShowSellerOrders(prev => !prev); 
+                            if (!showSellerOrders) {
+                              const sellerId = seller._id || seller.id;
+                              if (sellerId) loadSellerOrders(sellerId);
+                            }
+                          }}
                           className="btn btn-secondary mt-2 text-xs"
                         >
                           {showSellerOrders ? 'Ẩn đơn bán' : 'Xem danh sách đơn bán'}
@@ -418,9 +503,9 @@ function ProductDetailPage() {
                       </div>
                     )}
 
-                    {seller._id !== currentUserId && (
+                    {((seller._id || seller.id) !== currentUserId) && (
                       <button
-                        onClick={() => handleReportUser(seller._id)}
+                        onClick={() => handleReportUser(seller._id || seller.id)}
                         className="btn mt-2 text-sm flex items-center justify-center gap-2"
                         style={{ color: 'var(--color-danger)', background: 'var(--color-danger-light)', border: '1px solid var(--color-danger)' }}
                       >
@@ -443,14 +528,26 @@ function ProductDetailPage() {
 
               {/* NÚT HÀNH ĐỘNG */}
               <div className="flex gap-2 mb-2">
-                <button
-                  onClick={handleBuy}
-                  disabled={!token}
-                  className="btn btn-primary flex-1"
-                  style={{ opacity: !token ? 0.5 : 1 }}
-                >
-                  Mua ngay
-                </button>
+                {product.status === 'Sold' ? (
+                  // 1. Nếu đã bán: Hiển thị nút "Đã bán" và vô hiệu hóa nó
+                  <button
+                    disabled
+                    className="btn btn-secondary flex-1" // Đổi sang style "secondary" (hoặc "disabled")
+                    style={{ opacity: 0.7, cursor: 'not-allowed' }}
+                  >
+                    Đã bán
+                  </button>
+                ) : (
+                  // 2. Nếu chưa bán: Giữ logic "Mua ngay" cũ
+                  <button
+                    onClick={handleBuy}
+                    disabled={!token}
+                    className="btn btn-primary flex-1"
+                    style={{ opacity: !token ? 0.5 : 1 }}
+                  >
+                    Mua ngay
+                  </button>
+                )}
                 <button
                   onClick={handleAddToWishlist}
                   disabled={!token}

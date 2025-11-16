@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react'; // MỚI: Thêm useRef
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
@@ -12,6 +12,9 @@ import WishlistPage from './pages/WishlistPage';
 import ProfilePage from './pages/ProfilePage';
 import MyListingsPage from './pages/MyListingsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import AuctionsPage from './pages/AuctionsPage';
+import AuctionDetailPage from './pages/AuctionDetailPage';
+import ChatRoomPage from './pages/ChatRoomPage';
 import './App.css';
 import logo from './assets/Logo_EVB_Light.png';
 
@@ -22,13 +25,22 @@ const IconChevronDown = () => (
   </svg>
 );
 
+// Icon Messenger/Chat
+const IconMessage = () => (
+  <svg className="icon-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+  </svg>
+);
+
 function Navigation() {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // MỚI: State và Ref cho dropdown
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Logic useEffect để lấy user (giữ nguyên)
   useEffect(() => {
@@ -64,6 +76,12 @@ function Navigation() {
     };
   }, [dropdownRef]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const currentQuery = params.get('q') || '';
+    setSearchTerm(currentQuery);
+  }, [location.search]);
+
   const handleLogout = () => {
     localStorage.removeItem('evb_token');
     localStorage.removeItem('evb_user');
@@ -77,6 +95,21 @@ function Navigation() {
     navigate(path);
   };
 
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    const trimmedQuery = searchTerm.trim();
+    setIsDropdownOpen(false);
+    if (trimmedQuery) {
+      navigate(`/products?q=${encodeURIComponent(trimmedQuery)}`);
+    } else {
+      navigate('/products');
+    }
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
   return (
     <nav className="nav">
       <div className="nav-container">
@@ -86,11 +119,44 @@ function Navigation() {
             <img src={logo} alt="EVB Logo" className="nav-logo-image" />
           </Link>
           
-          {/* 2. Các nút bên phải */}
-          <div className="nav-links">
+          <div className="nav-actions">
+            <form className="nav-search" onSubmit={handleSearchSubmit}>
+              <input
+                type="text"
+                className="nav-search-input"
+                placeholder="Tìm kiếm sản phẩm..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+              />
+              <button type="submit" className="nav-search-button">
+                Tìm kiếm
+              </button>
+            </form>
+
+            {/* 2. Các nút bên phải */}
+            <div className="nav-links">
+            <Link to="/auctions" className="nav-link">
+              Đấu giá
+            </Link>
             {user ? (
               // === GIAO DIỆN KHI ĐÃ ĐĂNG NHẬP ===
               <>
+                {/* Nút Nhắn tin */}
+                <Link 
+                  to="/chat" 
+                  className="nav-link"
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '6px',
+                    position: 'relative'
+                  }}
+                  title="Nhắn tin"
+                >
+                  <IconMessage />
+                  <span>Nhắn tin</span>
+                </Link>
+                
                 {/* Nút Bán hàng (luôn hiển thị) */}
                 <Link to="/create" className="nav-link-button">
                   Bán hàng
@@ -150,33 +216,66 @@ function Navigation() {
               </>
             )}
           </div>
+          </div>
         </div>
       </div>
     </nav>
   );
 }
 
+function AppLayout() {
+  const location = useLocation();
+  const [isTransitioning, setIsTransitioning] = useState(true);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    const timeout = window.setTimeout(() => setIsTransitioning(false), 450);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    setIsTransitioning(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const timeout = window.setTimeout(() => setIsTransitioning(false), 450);
+    return () => window.clearTimeout(timeout);
+  }, [location.pathname, location.search]);
+
+  return (
+    <div className="app-container">
+      <Navigation />
+      <main className="page-wrapper">
+        <div
+          key={`${location.pathname}${location.search}${location.hash}`}
+          className={`page-transition ${isTransitioning ? 'page-transition--active' : ''}`}
+        >
+          <Routes location={location}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            <Route path="/products/:id" element={<ProductDetailPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/create" element={<CreateListingPage />} />
+            <Route path="/edit/:id" element={<EditListingPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/my-listings" element={<MyListingsPage />} />
+            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/auctions" element={<AuctionsPage />} />
+            <Route path="/auctions/:id" element={<AuctionDetailPage />} />
+            <Route path="/chat" element={<ChatRoomPage />} />
+            <Route path="/chat/:roomId" element={<ChatRoomPage />} />
+          </Routes>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 function App() {
-  // Phần App() giữ nguyên
   return (
     <Router>
-      <div className="app-container">
-        <Navigation />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/products" element={<ProductsPage />} />
-          <Route path="/products/:id" element={<ProductDetailPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/create" element={<CreateListingPage />} />
-          <Route path="/edit/:id" element={<EditListingPage />} />
-          <Route path="/wishlist" element={<WishlistPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/my-listings" element={<MyListingsPage />} />
-          <Route path="/admin" element={<AdminDashboardPage />} />
-        </Routes>
-      </div>
+      <AppLayout />
     </Router>
   );
 }
