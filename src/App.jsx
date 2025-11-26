@@ -14,9 +14,12 @@ import MyListingsPage from './pages/MyListingsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AuctionsPage from './pages/AuctionsPage';
 import AuctionDetailPage from './pages/AuctionDetailPage';
+import CreateAuctionPage from './pages/CreateAuctionPage';
 import ChatRoomPage from './pages/ChatRoomPage';
 import './App.css';
 import logo from './assets/Logo_EVB_Light.png';
+import DepositPage from './pages/DepositPage';
+import WithdrawalPage from './pages/WithdrawalPage';
 
 // MỚI: Thêm icon cho dropdown
 const IconChevronDown = () => (
@@ -89,7 +92,7 @@ function Navigation() {
     setIsDropdownOpen(false); // MỚI: Đóng dropdown khi logout
     navigate('/');
   };
-  
+
   const handleDropdownClick = (path) => {
     setIsDropdownOpen(false);
     navigate(path);
@@ -118,7 +121,7 @@ function Navigation() {
           <Link to="/" className="nav-logo" onClick={() => setIsDropdownOpen(false)}>
             <img src={logo} alt="EVB Logo" className="nav-logo-image" />
           </Link>
-          
+
           <div className="nav-actions">
             <form className="nav-search" onSubmit={handleSearchSubmit}>
               <input
@@ -135,87 +138,92 @@ function Navigation() {
 
             {/* 2. Các nút bên phải */}
             <div className="nav-links">
-            <Link to="/auctions" className="nav-link">
-              Đấu giá
-            </Link>
-            {user ? (
-              // === GIAO DIỆN KHI ĐÃ ĐĂNG NHẬP ===
-              <>
-                {/* Nút Nhắn tin */}
-                <Link 
-                  to="/chat" 
-                  className="nav-link"
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '6px',
-                    position: 'relative'
-                  }}
-                  title="Nhắn tin"
-                >
-                  <IconMessage />
-                  <span>Nhắn tin</span>
-                </Link>
-                
-                {/* Nút Bán hàng (luôn hiển thị) */}
-                <Link to="/create" className="nav-link-button">
-                  Bán hàng
-                </Link>
-                
-                {/* MỚI: Dropdown thông tin user */}
-                <div className="relative" ref={dropdownRef}>
-                  {/* Nút bấm tên User */}
-                  <button 
-                    onClick={() => setIsDropdownOpen(prev => !prev)} 
-                    className="nav-user-button"
+              {user ? (
+                // === GIAO DIỆN KHI ĐÃ ĐĂNG NHẬP ===
+                <>
+                  {/* Nút Nhắn tin */}
+                  <Link
+                    to="/chat"
+                    className="nav-link"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      position: 'relative'
+                    }}
+                    title="Nhắn tin"
                   >
-                    <span>Chào, {user.username || 'Bạn'}</span>
-                    <IconChevronDown />
-                  </button>
-                  
-                  {/* Menu Dropdown */}
-                  {isDropdownOpen && (
-                    <div className="dropdown-menu">
-                      <Link to="/my-listings" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                        Tin đăng của tôi
-                      </Link>
-                      <Link to="/wishlist" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                        Tin đã thích
-                      </Link>
-                      <Link to="/cart" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                        Giao dịch của tôi
-                      </Link>
-                      <Link to="/profile" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                        Thông tin của tôi
-                      </Link>
-                      {user.role === 'admin' && (
-                        <Link to="/admin" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                          Admin Dashboard
+                    <IconMessage />
+                    <span>Nhắn tin</span>
+                  </Link>
+
+                  {/* Nút Bán hàng (luôn hiển thị) */}
+                  <Link to="/create" className="nav-link-button">
+                    Bán hàng
+                  </Link>
+
+                  {/* MỚI: Dropdown thông tin user */}
+                  <div className="relative" ref={dropdownRef}>
+                    {/* Nút bấm tên User */}
+                    <button
+                      onClick={() => setIsDropdownOpen(prev => !prev)}
+                      className="nav-user-button"
+                    >
+                      <span>Chào, {user.username || 'Bạn'}</span>
+                      <IconChevronDown />
+                    </button>
+
+                    {/* Menu Dropdown */}
+                    {isDropdownOpen && (
+                      <div className="dropdown-menu">
+                        <Link to="/my-listings" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                          Tin đăng của tôi
                         </Link>
-                      )}
-                      <div className="dropdown-divider"></div>
-                      <button
-                        onClick={handleLogout}
-                        className="dropdown-item-logout"
-                      >
-                        Đăng xuất
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              // === GIAO DIỆN KHI CHƯA ĐĂNG NHẬP ===
-              <>
-                <Link to="/login" className="nav-link">
-                  Đăng nhập
-                </Link>
-                <Link to="/register" className="nav-link-button">
-                  Đăng ký
-                </Link>
-              </>
-            )}
-          </div>
+                        <Link to="/wishlist" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                          Tin đã thích
+                        </Link>
+                        <Link to="/cart" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                          Giao dịch của tôi
+                        </Link>
+                        <div className="dropdown-divider"></div>
+                        <Link to="/deposit" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                          💰 Nạp tiền
+                        </Link>
+                        <Link to="/withdrawal" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                          💸 Rút tiền
+                        </Link>
+                        <div className="dropdown-divider"></div>
+                        <Link to="/profile" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                          Thông tin của tôi
+                        </Link>
+                        {user.role === 'admin' && (
+                          <Link to="/admin" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                            Admin Dashboard
+                          </Link>
+                        )}
+                        <div className="dropdown-divider"></div>
+                        <button
+                          onClick={handleLogout}
+                          className="dropdown-item-logout"
+                        >
+                          Đăng xuất
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                // === GIAO DIỆN KHI CHƯA ĐĂNG NHẬP ===
+                <>
+                  <Link to="/login" className="nav-link">
+                    Đăng nhập
+                  </Link>
+                  <Link to="/register" className="nav-link-button">
+                    Đăng ký
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -251,6 +259,8 @@ function AppLayout() {
           <Routes location={location}>
             <Route path="/" element={<HomePage />} />
             <Route path="/products" element={<ProductsPage />} />
+            <Route path="/deposit" element={<DepositPage />} />
+            <Route path="/withdrawal" element={<WithdrawalPage />} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -263,6 +273,7 @@ function AppLayout() {
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/auctions" element={<AuctionsPage />} />
             <Route path="/auctions/:id" element={<AuctionDetailPage />} />
+            <Route path="/create-auction/:listingId" element={<CreateAuctionPage />} />
             <Route path="/chat" element={<ChatRoomPage />} />
             <Route path="/chat/:roomId" element={<ChatRoomPage />} />
           </Routes>

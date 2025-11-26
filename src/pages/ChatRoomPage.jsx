@@ -159,10 +159,15 @@ function ChatRoomPage() {
     const unsubscribe = onValue(
       userRoomsRef,
       async (snapshot) => {
+        // Bắt đầu quá trình tải/cập nhật
+        setRoomsLoading(true);
+        setRoomsError("");
+
         if (snapshot.exists()) {
           const roomsData = snapshot.val();
           const roomIds = Object.keys(roomsData);
 
+          // --- FAN-OUT READS: Bất đồng bộ để lấy chi tiết phòng và tên người dùng ---
           const roomsPromises = roomIds.map(async (roomIdKey) => {
             try {
               const roomDetailRef = ref(db, `chatRooms/${roomIdKey}`);
@@ -171,17 +176,21 @@ function ChatRoomPage() {
               if (!roomDetailSnapshot.exists()) return null;
 
               const roomData = roomDetailSnapshot.val();
+              const participantIds = Object.keys(roomData.participants || {});
 
+              // Đảm bảo người dùng hiện tại là thành viên và tìm ID đối phương
+              // Giả định 'currentUserId' đã được định nghĩa và có sẵn trong scope này
               if (!roomData.participants || !roomData.participants[currentUserId]) {
                 return null;
               }
 
-              const otherParticipantId = Object.keys(roomData.participants || {}).find(
+              const otherParticipantId = participantIds.find(
                 id => id !== currentUserId
               );
 
               if (!otherParticipantId) return null;
 
+              // Lấy tên người dùng (dựa vào hàm loadUserName đã được định nghĩa bên ngoài)
               const username = await loadUserName(otherParticipantId);
 
               return {
@@ -194,22 +203,26 @@ function ChatRoomPage() {
               };
             } catch (err) {
               console.error(`Error loading room ${roomIdKey}:`, err);
-              return null;
+              return null; // Trả về null nếu có lỗi với một phòng cụ thể
             }
           });
 
           const roomsArray = (await Promise.all(roomsPromises)).filter(room => room !== null);
 
+          // Sắp xếp
           roomsArray.sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
 
           setChatRooms(roomsArray);
         } else {
-          setChatRooms([]);
+          setChatRooms([]); // Không có phòng nào
         }
+
+        // *** CHỈ CẬP NHẬT SAU KHI TOÀN BỘ PROCESS BẤT ĐỒNG BỘ HOÀN TẤT ***
         setRoomsLoading(false);
         setRoomsError("");
       },
       (error) => {
+        // Xử lý lỗi cấp độ listener (ví dụ: lỗi kết nối Firebase)
         console.error("Error loading chat rooms:", error);
         setRoomsError("Lỗi khi tải danh sách cuộc trò chuyện");
         setRoomsLoading(false);
@@ -277,7 +290,7 @@ function ChatRoomPage() {
     // *** THAY ĐỔI 3: Đóng sidebar khi chọn room khác ***
     setShowProfileSidebar(false);
     setProfileUserDetails(null); // Xóa dữ liệu cũ
-    
+
     setSelectedRoom(room);
     setMessages([]);
     setError("");
@@ -369,12 +382,12 @@ function ChatRoomPage() {
       console.error("Không tìm thấy ID người dùng để xem chi tiết.");
       return;
     }
-    
+
     const userId = selectedRoom.otherParticipantId;
 
     // Mở sidebar
     setShowProfileSidebar(true);
-    
+
     // Nếu đã có dữ liệu của user này thì không fetch lại
     if (profileUserDetails?._id === userId) {
       return;
@@ -388,7 +401,7 @@ function ChatRoomPage() {
 
       // Sử dụng endpoint bạn cung cấp
       const response = await api.get(`auth/userprofile/${userId}`);
-      
+
       setProfileUserDetails(response.data?.data || response.data);
     } catch (err) {
       console.error("Lỗi khi tải thông tin user profile:", err);
@@ -421,7 +434,7 @@ function ChatRoomPage() {
         overflow: "hidden",
         borderRadius: "var(--radius-lg)",
         padding: 0,
-        minHeight: "600px",
+        minHeight: "90vh",
         maxHeight: "90vh",
       }}>
 
@@ -635,7 +648,7 @@ function ChatRoomPage() {
                 </div>
                 <div style={{ fontSize: "13px", color: "var(--text-body)" }}>Đang hoạt động</div>
               </div>
-              
+
               <button
                 className="btn"
                 onClick={handleViewProfile} // Sửa lại hàm này
@@ -871,8 +884,8 @@ function ChatRoomPage() {
               <h5 style={{ margin: 0, fontSize: "16px", color: "var(--text-heading)" }}>
                 Thông tin chi tiết
               </h5>
-              <button 
-                onClick={() => setShowProfileSidebar(false)} 
+              <button
+                onClick={() => setShowProfileSidebar(false)}
                 style={{
                   background: "transparent",
                   border: "none",

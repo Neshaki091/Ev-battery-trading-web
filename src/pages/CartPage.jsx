@@ -159,6 +159,18 @@ function CartPage() {
         const response = await api.get('/transactions/orders/history');
         const orders = response.data?.data || response.data || [];
 
+        // Lấy current user để biết mình là buyer hay seller trong từng giao dịch
+        let currentUserId = null;
+        try {
+          const userDataString = localStorage.getItem('evb_user');
+          if (userDataString) {
+            const userData = JSON.parse(userDataString);
+            currentUserId = userData._id || userData.user_id;
+          }
+        } catch (parseErr) {
+          console.warn('Không thể đọc evb_user từ localStorage:', parseErr);
+        }
+
         if (orders.length === 0) {
           setCartItems([]);
           setLoading(false);
@@ -182,6 +194,27 @@ function CartPage() {
         // === CẬP NHẬT: Lưu trữ chi tiết đầy đủ ===
         const items = orders.map(order => {
           const listingDetail = listingsMap[order.listingId];
+
+          // Xác định role của user trong giao dịch này
+          const rawBuyerId =
+            order.userId?._id || order.userId?.id || order.userId?.user_id || order.userId || order.buyerId;
+          const rawSellerId =
+            order.sellerId?._id || order.sellerId?.id || order.sellerId?.user_id || order.sellerId;
+
+          const buyerIdStr = rawBuyerId ? String(rawBuyerId) : null;
+          const sellerIdStr = rawSellerId ? String(rawSellerId) : null;
+          const currentIdStr = currentUserId ? String(currentUserId) : null;
+
+          let role = 'unknown';
+          if (currentIdStr && sellerIdStr && currentIdStr === sellerIdStr) {
+            role = 'seller';
+          } else if (currentIdStr && buyerIdStr && currentIdStr === buyerIdStr) {
+            role = 'buyer';
+          }
+
+          const buyerSignedAt = order.buyerSignature && order.buyerSignature.signedAt;
+          const sellerSignedAt = order.sellerSignature && order.sellerSignature.signedAt;
+
           return {
             // Dữ liệu tóm tắt cho danh sách
             id: order._id || order.id,
@@ -190,6 +223,11 @@ function CartPage() {
             quantity: 1,
             image: listingDetail?.images?.[0] || null,
             status: order.status,
+            role,
+            buyerId: rawBuyerId || null,
+            sellerId: rawSellerId || null,
+            buyerSigned: !!buyerSignedAt,
+            sellerSigned: !!sellerSignedAt,
             // Dữ liệu chi tiết cho modal
             details: {
               order: order,
@@ -208,23 +246,25 @@ function CartPage() {
     fetchTransactions();
   }, []);
 
-  // === Các hàm xử lý (Giữ nguyên) ===
+  // === Các hàm xử lý ===
   const handleRemoveItem = async (itemId) => {
     alert('Giao dịch không thể xóa. Vui lòng liên hệ admin nếu cần hủy.');
   };
 
   const handlePayOrder = async (orderId) => {
     try {
+      // Thanh toán bằng ví nội bộ (Transaction Service sẽ trừ tiền từ ví buyer)
       await api.post(`/transactions/orders/${orderId}/payment/`);
-      alert('Thanh toán thành công');
-      setCartItems(currentItems =>
-        currentItems.map(item =>
+      alert('Thanh toán bằng ví thành công');
+      setCartItems((currentItems) =>
+        currentItems.map((item) =>
           item.id === orderId ? { ...item, status: 'paid' } : item
         )
       );
     } catch (err) {
       console.error('Error paying order object:', err);
-      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
+      const errorMessage =
+        err.response?.data?.error || err.response?.data?.message || err.message;
       if (err.response?.data?.requiresProfileUpdate) {
         const shouldUpdate = window.confirm(
           'Bạn phải cập nhật đầy đủ Họ và Tên trước khi thanh toán.\n\nBạn có muốn chuyển đến trang Profile để cập nhật ngay bây giờ?'
@@ -233,7 +273,7 @@ function CartPage() {
           navigate('/profile');
         }
       } else {
-        alert('Không thể thanh toán: ' + errorMessage);
+        alert('Không thể thanh toán bằng ví: ' + errorMessage);
       }
     }
   };
@@ -271,16 +311,137 @@ function CartPage() {
     }
   };
 
+  // 🆕 Seller: Hủy giao dịch (chỉ khi pending)
+  const handleSellerCancel = async (item) => {
+    if (!item || item.role !== 'seller') return;
+
+    const confirmCancel = window.confirm(
+      'Bạn có chắc chắn muốn hủy giao dịch này? Khách hàng sẽ không thể tiếp tục thanh toán.'
+    );
+    if (!confirmCancel) return;
+
+    const reason = window.prompt('Lý do hủy (tùy chọn):', 'Sản phẩm không còn khả dụng');
+
+    try {
+      // Backend route: POST /transactions/:id/cancel (qua gateway: /api/transactions/transactions/:id/cancel)
+      await api.post(`/transactions/transactions/${item.id}/cancel`, {
+        reason: reason || 'Seller cancelled transaction from history',
+      });
+
+      alert('Đã hủy giao dịch thành công.');
+      setCartItems((currentItems) =>
+        currentItems.map((it) =>
+          it.id === item.id ? { ...it, status: 'cancelled' } : it
+        )
+      );
+    } catch (err) {
+      console.error('Error cancelling transaction:', err);
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Không thể hủy giao dịch';
+      alert(errorMessage);
+    }
+  };
+
+  // 🆕 Nhắn tin với khách hàng / người bán trong giao dịch
+  const handleOpenChatInTransaction = async (item) => {
+    try {
+      if (!item) return;
+
+      const order = item.details?.order || {};
+      const buyerId =
+        order.userId?._id || order.userId?.id || order.userId?.user_id || order.userId || item.buyerId;
+      const sellerId =
+        order.sellerId?._id || order.sellerId?.id || order.sellerId?.user_id || order.sellerId || item.sellerId;
+
+      const receiverId = item.role === 'seller' ? buyerId : sellerId;
+
+      if (!receiverId) {
+        alert('Không tìm thấy thông tin người dùng để nhắn tin.');
+        return;
+      }
+
+      const response = await api.post('/chat/rooms', { receiverId });
+      const roomData = response.data || response;
+      const roomId =
+        roomData?.roomId ||
+        roomData?.data?.roomId ||
+        roomData?._id ||
+        roomData?.id;
+
+      if (!roomId) {
+        throw new Error('Không thể tạo hoặc lấy phòng chat.');
+      }
+
+      navigate(`/chat/${roomId}`);
+    } catch (err) {
+      console.error('Error creating/getting chat room from transaction:', err);
+      alert(
+        err.response?.data?.message ||
+          err.message ||
+          'Lỗi khi tạo cuộc trò chuyện với khách hàng.'
+      );
+    }
+  };
+
+  // 🆕 Ký hợp đồng điện tử (buyer hoặc seller)
+  const handleSignContract = async (item) => {
+    if (!item) return;
+
+    try {
+      // Backend route: POST /transactions/:id/sign (qua gateway: /api/transactions/transactions/:id/sign)
+      const response = await api.post(`/transactions/transactions/${item.id}/sign`, {
+        deviceInfo: navigator.userAgent || 'web',
+      });
+
+      const data = response.data?.data || response.data || {};
+      const buyerSigned =
+        data.buyerSignature && (data.buyerSignature.signedAt || data.buyerSignature.signed);
+      const sellerSigned =
+        data.sellerSignature && (data.sellerSignature.signedAt || data.sellerSignature.signed);
+
+      setCartItems((currentItems) =>
+        currentItems.map((it) =>
+          it.id === item.id
+            ? {
+                ...it,
+                buyerSigned: !!buyerSigned,
+                sellerSigned: !!sellerSigned,
+              }
+            : it
+        )
+      );
+
+      alert('Đã ký hợp đồng điện tử thành công.');
+    } catch (err) {
+      console.error('Error signing contract:', err);
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Không thể ký hợp đồng';
+      alert(errorMessage);
+    }
+  };
+
   // === Các hàm tính tổng (Giữ nguyên) ===
   const calculateTotal = () => {
-    const pendingItems = cartItems.filter(item => item.status === 'pending');
+    // Chỉ tính tổng cho các giao dịch mà mình là người mua
+    const pendingItems = cartItems.filter(
+      item => item.status === 'pending' && item.role === 'buyer'
+    );
     return pendingItems.reduce((total, item) => {
       return total + (item.price * item.quantity);
     }, 0);
   };
 
   const calculateTotalPaid = () => {
-    const paidItems = cartItems.filter(item => item.status === 'paid');
+    // Chỉ tính tổng đã mua cho các giao dịch mà mình là người mua
+    const paidItems = cartItems.filter(
+      item => item.status === 'paid' && item.role === 'buyer'
+    );
     return paidItems.reduce((total, item) => {
       return total + (item.price * item.quantity);
     }, 0);
@@ -401,27 +562,67 @@ function CartPage() {
 
                       {/* Cột bên phải: nút hành động */}
                       <div className="flex-shrink-0 flex flex-col items-end gap-2">
-                        {item.status === 'pending' && (
-                          <button
-                            onClick={() => handlePayOrder(item.id)}
-                            className="btn btn-primary flex items-center justify-center gap-2"
-                            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-                          >
-                            <IconCreditCard />
-                            Thanh toán
-                          </button>
+                        {/* Buyer actions: thanh toán + ký hợp đồng + tải hợp đồng */}
+                        {item.role === 'buyer' && item.status === 'pending' && (
+                          <>
+                            <Link
+                              to={`/payment/${item.id}`}
+                              className="btn btn-primary flex items-center justify-center gap-2"
+                              style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                            >
+                              <IconCreditCard />
+                              Thanh toán qua Casso
+                            </Link>
+                            <button
+                              onClick={() => handlePayOrder(item.id)}
+                              className="btn btn-ghost flex items-center justify-center gap-2"
+                              style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                              title="Thanh toán thủ công (không qua Casso)"
+                            >
+                              <IconCreditCard />
+                              Thanh toán thủ công
+                            </button>
+                          </>
                         )}
 
-                        {item.status === 'paid' && (
+                        {item.role === 'buyer' && (item.status === 'paid' || item.status === 'completed') && (
                           <button
                             onClick={() => handleDownloadContract(item.id)}
                             className="btn btn-secondary flex items-center justify-center gap-2"
                             style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                            title="Tải hợp đồng PDF"
                           >
                             <IconDownload />
                             Tải Hợp Đồng
                           </button>
+                        )}
 
+                        {/* Seller actions: trạng thái, nhắn tin, hủy khi pending */}
+                        {item.role === 'seller' && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn btn-secondary flex items-center justify-center gap-2"
+                              style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+                              onClick={() => handleOpenChatInTransaction(item)}
+                            >
+                              Nhắn tin với khách hàng
+                            </button>
+                            {item.status === 'pending' && (
+                              <button
+                                type="button"
+                                className="btn btn-ghost flex items-center justify-center gap-2"
+                                style={{
+                                  fontSize: '0.875rem',
+                                  padding: '0.5rem 1rem',
+                                  color: 'var(--color-danger)',
+                                }}
+                                onClick={() => handleSellerCancel(item)}
+                              >
+                                Hủy tin đăng
+                              </button>
+                            )}
+                          </>
                         )}
                         {listingId && (
                           <Link

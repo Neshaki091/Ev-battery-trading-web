@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 import {
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-    ResponsiveContainer
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
 } from 'recharts';
 
 function AdminDashboardPage() {
@@ -89,6 +89,13 @@ function AdminDashboardPage() {
                 >
                   Báo cáo
                 </button>
+                {/* BỎ tab Thanh toán Seller vì tiền đã tự động cộng vào ví seller khi khách thanh toán */}
+                <button
+                  className={`admin-nav-button ${activeTab === 'withdrawals' ? 'is-active' : ''}`}
+                  onClick={() => setActiveTab('withdrawals')}
+                >
+                  💸 Rút tiền Seller
+                </button>
                 <button
                   className={`admin-nav-button ${activeTab === 'fees' ? 'is-active' : ''}`}
                   onClick={() => setActiveTab('fees')}
@@ -117,6 +124,10 @@ function AdminDashboardPage() {
                 )}
                 {activeTab === 'reports' && (
                   <AdminReportsTab onToast={showToast} onConfirm={openConfirm} />
+                )}
+                {/* Tab Thanh toán Seller đã được loại bỏ */}
+                {activeTab === 'withdrawals' && (
+                  <AdminWithdrawalsTab onToast={showToast} onConfirm={openConfirm} />
                 )}
                 {activeTab === 'fees' && (
                   <AdminFeesTab onToast={showToast} onConfirm={openConfirm} />
@@ -743,23 +754,23 @@ function AdminAnalyticsTab({ onToast }) {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
-  if (loading) {
+  if (loading) {
     return (
       <div className="admin-loading-state">
         <div className="loading-spinner-simple"></div>
         <p>Đang tải dữ liệu thống kê...</p>
       </div>
     );
-  }
+  }
 
-  if (!analytics) {
+  if (!analytics) {
     return (
       <div className="admin-empty-state">
         <span className="admin-empty-icon">📊</span>
         <p>Không thể tải dữ liệu thống kê.</p>
       </div>
     );
-  }
+  }
 
   // Định dạng dữ liệu cho biểu đồ
   // API mới trả về chartData và dataGrouping
@@ -948,9 +959,9 @@ function AdminAnalyticsTab({ onToast }) {
 // Component phụ: StatCard
 function StatCard({ title, value }) {
   return (
-    <div style={{ 
-      background: 'var(--bg-muted)', 
-      padding: '1rem', 
+    <div style={{
+      background: 'var(--bg-muted)',
+      padding: '1rem',
       borderRadius: 'var(--radius-md)',
       border: '1px solid var(--color-border)'
     }}>
@@ -967,9 +978,9 @@ function StatCard({ title, value }) {
 // Component bọc (wrapper) cho biểu đồ
 function ChartBox({ title, children }) {
   return (
-    <div style={{ 
-      background: 'var(--bg-muted)', 
-      padding: '1rem', 
+    <div style={{
+      background: 'var(--bg-muted)',
+      padding: '1rem',
       borderRadius: 'var(--radius-md)',
       border: '1px solid var(--color-border)'
     }}>
@@ -987,9 +998,9 @@ function ChartBox({ title, children }) {
 function ReusableAnalyticsChart({ data, dataKey, color }) {
   const sanitizedData = Array.isArray(data)
     ? data.map((item) => ({
-        ...item,
-        [dataKey]: Number.isFinite(Number(item[dataKey])) ? Number(item[dataKey]) : 0,
-      }))
+      ...item,
+      [dataKey]: Number.isFinite(Number(item[dataKey])) ? Number(item[dataKey]) : 0,
+    }))
     : [];
 
   const hasMeaningfulData = sanitizedData.some((item) => Number(item[dataKey]) > 0);
@@ -1000,31 +1011,31 @@ function ReusableAnalyticsChart({ data, dataKey, color }) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart 
-        data={sanitizedData} 
+      <LineChart
+        data={sanitizedData}
         margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
         <XAxis dataKey="dateLabel" stroke="var(--text-body)" />
-        <YAxis 
+        <YAxis
           stroke="var(--text-body)"
-          tickFormatter={(value) => 
+          tickFormatter={(value) =>
             value > 1000000 ? `${value / 1000000}tr` : (value > 1000 ? `${value / 1000}k` : value)
           }
         />
-        <Tooltip 
-          contentStyle={{ 
-            background: 'var(--bg-card)', 
-            borderColor: 'var(--color-border)' 
+        <Tooltip
+          contentStyle={{
+            background: 'var(--bg-card)',
+            borderColor: 'var(--color-border)'
           }}
         />
-        <Line 
-          type="monotone" 
-          dataKey={dataKey} 
-          stroke={color} 
-          dot={{ r: 3 }} 
-          activeDot={{ r: 5 }} 
-          strokeWidth={2} 
+        <Line
+          type="monotone"
+          dataKey={dataKey}
+          stroke={color}
+          dot={{ r: 3 }}
+          activeDot={{ r: 5 }}
+          strokeWidth={2}
         />
       </LineChart>
     </ResponsiveContainer>
@@ -1205,6 +1216,362 @@ function AdminUsersTab({ onToast, onConfirm }) {
   );
 }
 
+// 💰 Admin Payments Tab - Quản lý thanh toán cho Seller
+function AdminPaymentsTab({ onToast, onConfirm }) {
+  const [pendingPayments, setPendingPayments] = useState([]);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState('pending'); // 'pending' or 'history'
+
+  const fetchPendingPayments = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/admin/transactions/payments/pending');
+      setPendingPayments(response.data?.data || []);
+    } catch (err) {
+      console.error('Error fetching pending payments:', err);
+      onToast?.('Không thể tải danh sách thanh toán chờ xử lý', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast]);
+
+  const fetchPaymentHistory = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/admin/transactions/payments/history');
+      setPaymentHistory(response.data?.data || []);
+    } catch (err) {
+      console.error('Error fetching payment history:', err);
+      onToast?.('Không thể tải lịch sử thanh toán', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast]);
+
+  useEffect(() => {
+    if (activeView === 'pending') {
+      fetchPendingPayments();
+    } else {
+      fetchPaymentHistory();
+    }
+  }, [activeView, fetchPendingPayments, fetchPaymentHistory]);
+
+  // 🆕 Copy to clipboard function
+  const copyToClipboard = useCallback((text, label) => {
+    navigator.clipboard.writeText(text).then(() => {
+      onToast?.(`Đã copy ${label}`, 'success');
+    }).catch(() => {
+      onToast?.('Không thể copy', 'error');
+    });
+  }, [onToast]);
+
+  const handleConfirmPayment = useCallback((payment) => {
+    const sellerWallet = payment.seller?.wallet || {};
+    const transactionRef = `EVB${payment._id.slice(-8).toUpperCase()}`;
+
+    onConfirm?.({
+      title: '💰 Xác nhận thanh toán cho Seller',
+      message: (
+        <div style={{ textAlign: 'left' }}>
+          <p style={{ marginBottom: '1rem' }}>
+            <strong>Thông tin chuyển khoản:</strong>
+          </p>
+          <div style={{
+            background: 'var(--bg-muted)',
+            padding: '1rem',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '1rem',
+            fontSize: '0.9rem'
+          }}>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <strong>Ngân hàng:</strong> {sellerWallet.bankName} ({sellerWallet.bankCode})
+            </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <strong>Số tài khoản:</strong> {sellerWallet.accountNumber}
+            </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <strong>Tên tài khoản:</strong> {sellerWallet.accountName}
+            </div>
+            {sellerWallet.branch && (
+              <div style={{ marginBottom: '0.5rem' }}>
+                <strong>Chi nhánh:</strong> {sellerWallet.branch}
+              </div>
+            )}
+            <div style={{
+              marginTop: '0.75rem',
+              paddingTop: '0.75rem',
+              borderTop: '1px solid var(--color-border)',
+              color: 'var(--color-success)',
+              fontSize: '1.1rem'
+            }}>
+              <strong>Số tiền:</strong> {payment.sellerAmount?.toLocaleString('vi-VN')} đ
+            </div>
+            <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              <strong>Nội dung CK:</strong> {transactionRef}
+            </div>
+          </div>
+          <p style={{ color: 'var(--text-body)', fontSize: '0.9rem' }}>
+            Bạn xác nhận đã chuyển tiền cho seller <strong>{payment.seller?.username || 'Unknown'}</strong>?
+          </p>
+        </div>
+      ),
+      confirmText: '✓ Xác nhận đã chuyển',
+      confirmVariant: 'success',
+      onConfirm: async () => {
+        try {
+          const notes = prompt('Ghi chú thêm (tùy chọn):');
+
+          await api.post(`/admin/transactions/payments/${payment._id}/confirm`, {
+            transactionRef: transactionRef,
+            notes: notes || ''
+          });
+
+          onToast?.('✅ Đã xác nhận thanh toán cho seller', 'success');
+          fetchPendingPayments();
+        } catch (err) {
+          console.error(err);
+          onToast?.(`❌ Không thể xác nhận: ${err.response?.data?.error || err.message}`, 'error');
+        }
+      }
+    });
+  }, [onConfirm, onToast, fetchPendingPayments]);
+
+  if (loading) {
+    return (
+      <div className="admin-loading-state">
+        <div className="loading-spinner-simple"></div>
+        <p>Đang tải dữ liệu thanh toán...</p>
+      </div>
+    );
+  }
+
+  const payments = activeView === 'pending' ? pendingPayments : paymentHistory;
+
+  return (
+    <section className="admin-section">
+      <header className="admin-section-header">
+        <div>
+          <h3 className="admin-section-title">
+            💰 Quản lý Thanh toán Seller ({payments.length})
+          </h3>
+          <p className="admin-section-subtitle">
+            Xác nhận chuyển tiền cho seller sau khi khách hàng đã thanh toán
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            type="button"
+            className={`admin-action-button ${activeView === 'pending' ? 'admin-action-primary' : 'admin-action-ghost'}`}
+            onClick={() => setActiveView('pending')}
+          >
+            Chờ xử lý
+          </button>
+          <button
+            type="button"
+            className={`admin-action-button ${activeView === 'history' ? 'admin-action-primary' : 'admin-action-ghost'}`}
+            onClick={() => setActiveView('history')}
+          >
+            Lịch sử
+          </button>
+          <button
+            type="button"
+            className="admin-refresh-button"
+            onClick={activeView === 'pending' ? fetchPendingPayments : fetchPaymentHistory}
+          >
+            ↻ Tải lại
+          </button>
+        </div>
+      </header>
+
+      {payments.length === 0 ? (
+        <div className="admin-empty-state">
+          <p>
+            {activeView === 'pending'
+              ? 'Không có thanh toán nào chờ xử lý'
+              : 'Chưa có lịch sử thanh toán'}
+          </p>
+        </div>
+      ) : (
+        <div className="admin-item-grid">
+          {payments.map((payment, index) => {
+            const paymentId = payment._id;
+            const sellerName = payment.seller?.username || payment.seller?.firstName || 'Unknown';
+            const sellerWallet = payment.seller?.wallet || {};
+            const hasWalletInfo = sellerWallet.bankName && sellerWallet.accountNumber;
+            const transactionRef = `EVB${paymentId.slice(-8).toUpperCase()}`;
+
+            return (
+              <div
+                key={paymentId}
+                className="admin-item-card"
+                style={{ animationDelay: `${index * 0.04}s` }}
+              >
+                <div className="admin-item-header">
+                  <div>
+                    <h4 className="admin-item-title">
+                      Seller: {sellerName}
+                    </h4>
+                    <p className="admin-item-subtitle">
+                      Mã GD: {paymentId}
+                    </p>
+                  </div>
+                  <span className={`admin-status-badge ${activeView === 'pending' ? 'admin-status-pending' : 'admin-status-active'}`}>
+                    {activeView === 'pending' ? 'Chờ xử lý' : 'Đã chuyển'}
+                  </span>
+                </div>
+
+                <div className="admin-item-meta" style={{ flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                    <span>Tổng đơn hàng:</span>
+                    <strong>{payment.price?.toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                    <span>Hoa hồng:</span>
+                    <span style={{ color: 'var(--color-danger)' }}>
+                      -{payment.commissionAmount?.toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', borderTop: '1px solid var(--color-border)', paddingTop: '0.5rem' }}>
+                    <span><strong>Chuyển cho seller:</strong></span>
+                    <strong style={{ color: 'var(--color-success)', fontSize: '1.1rem' }}>
+                      {payment.sellerAmount?.toLocaleString('vi-VN')} đ
+                    </strong>
+                  </div>
+
+                  {hasWalletInfo && (
+                    <div style={{
+                      marginTop: '0.75rem',
+                      padding: '1rem',
+                      background: 'var(--bg-body)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '0.875rem',
+                      border: '1px solid var(--color-border)'
+                    }}>
+                      <div style={{ marginBottom: '0.75rem', fontWeight: 'bold', color: 'var(--text-heading)' }}>
+                        📋 Thông tin chuyển khoản:
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <span>Ngân hàng:</span>
+                        <strong>{sellerWallet.bankName} ({sellerWallet.bankCode})</strong>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'center' }}>
+                        <span>Số TK:</span>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <strong>{sellerWallet.accountNumber}</strong>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(sellerWallet.accountNumber, 'số tài khoản')}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.75rem',
+                              background: 'var(--color-primary)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 'var(--radius-sm)',
+                              cursor: 'pointer'
+                            }}
+                            title="Copy số tài khoản"
+                          >
+                            📋
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <span>Tên TK:</span>
+                        <strong>{sellerWallet.accountName}</strong>
+                      </div>
+
+                      {sellerWallet.branch && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                          <span>Chi nhánh:</span>
+                          <span>{sellerWallet.branch}</span>
+                        </div>
+                      )}
+
+                      <div style={{
+                        marginTop: '0.75rem',
+                        paddingTop: '0.75rem',
+                        borderTop: '1px solid var(--color-border)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span>Nội dung CK:</span>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <code style={{
+                            background: 'var(--bg-muted)',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: 'var(--radius-sm)',
+                            fontWeight: 'bold'
+                          }}>
+                            {transactionRef}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(transactionRef, 'nội dung chuyển khoản')}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.75rem',
+                              background: 'var(--color-primary)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 'var(--radius-sm)',
+                              cursor: 'pointer'
+                            }}
+                            title="Copy nội dung chuyển khoản"
+                          >
+                            📋
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!hasWalletInfo && activeView === 'pending' && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: '#fff3cd', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', color: '#856404' }}>
+                      ⚠️ Seller chưa cập nhật thông tin ví
+                    </div>
+                  )}
+
+                  {payment.paidAt && (
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                      Khách thanh toán: {new Date(payment.paidAt).toLocaleString('vi-VN')}
+                    </div>
+                  )}
+
+                  {payment.sellerPayment?.paidAt && (
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                      Đã chuyển: {new Date(payment.sellerPayment.paidAt).toLocaleString('vi-VN')}
+                    </div>
+                  )}
+                </div>
+
+                {activeView === 'pending' && (
+                  <div className="admin-item-actions">
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmPayment(payment)}
+                      className="admin-action-button admin-action-success"
+                      disabled={!hasWalletInfo}
+                      title={!hasWalletInfo ? 'Seller chưa cập nhật thông tin ví' : 'Xác nhận đã chuyển tiền'}
+                    >
+                      ✓ Xác nhận đã chuyển
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ConfirmDialog({
   title,
   message,
@@ -1251,6 +1618,360 @@ function ConfirmDialog({
         </div>
       </div>
     </div>
+  );
+}
+
+// 💸 Admin Withdrawals Tab - Quản lý rút tiền cho Seller
+function AdminWithdrawalsTab({ onToast, onConfirm }) {
+  const [pendingWithdrawals, setPendingWithdrawals] = useState([]);
+  const [withdrawalHistory, setWithdrawalHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState('pending'); // 'pending' or 'history'
+
+  const fetchPendingWithdrawals = useCallback(async () => {
+    try {
+      setLoading(true);
+      // Gọi qua transaction-service: /api/admin/transactions/withdrawals/pending
+      const response = await api.get('/admin/transactions/withdrawals/pending');
+      setPendingWithdrawals(response.data?.data || []);
+    } catch (err) {
+      console.error('Error fetching pending withdrawals:', err);
+      onToast?.('Không thể tải danh sách yêu cầu rút tiền', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast]);
+
+  const fetchWithdrawalHistory = useCallback(async () => {
+    try {
+      setLoading(true);
+      // Gọi qua transaction-service: /api/admin/transactions/withdrawals/history
+      const response = await api.get('/admin/transactions/withdrawals/history');
+      setWithdrawalHistory(response.data?.data || []);
+    } catch (err) {
+      console.error('Error fetching withdrawal history:', err);
+      onToast?.('Không thể tải lịch sử rút tiền', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast]);
+
+  useEffect(() => {
+    if (activeView === 'pending') {
+      fetchPendingWithdrawals();
+    } else {
+      fetchWithdrawalHistory();
+    }
+  }, [activeView, fetchPendingWithdrawals, fetchWithdrawalHistory]);
+
+  const handleApproveWithdrawal = useCallback((withdrawal) => {
+    const bankInfo = withdrawal.bankInfo || {};
+    const amount = withdrawal.amount || 0;
+    let vietQrUrl = null;
+
+    if (bankInfo.bankCode && bankInfo.accountNumber && amount > 0) {
+      try {
+        const addInfo = encodeURIComponent(
+          `EVB Withdraw ${withdrawal._id || ''}`.trim()
+        );
+        vietQrUrl = `https://img.vietqr.io/image/${bankInfo.bankCode}-${bankInfo.accountNumber}-compact.png?amount=${amount}&addInfo=${addInfo}`;
+      } catch (e) {
+        // Nếu encodeURIComponent có vấn đề thì bỏ qua QR, không làm vỡ UI
+        vietQrUrl = null;
+      }
+    }
+
+    onConfirm?.({
+      title: '✅ Duyệt yêu cầu rút tiền',
+      message: (
+        <div style={{ textAlign: 'left' }}>
+          <p style={{ marginBottom: '1rem' }}>
+            Xác nhận đã chuyển <strong>{withdrawal.amount.toLocaleString('vi-VN')} đ</strong> cho seller <strong>{withdrawal.user?.username || 'Unknown'}</strong>?
+          </p>
+          <div style={{
+            background: 'var(--bg-muted)',
+            padding: '1rem',
+            borderRadius: '8px',
+            fontSize: '0.9rem'
+          }}>
+            <div><strong>Ngân hàng:</strong> {bankInfo.bankName}</div>
+            <div><strong>STK:</strong> {bankInfo.accountNumber}</div>
+            <div><strong>Tên TK:</strong> {bankInfo.accountName}</div>
+          </div>
+          {vietQrUrl && (
+            <div
+              style={{
+                marginTop: '1rem',
+                padding: '0.75rem 0.75rem 0.5rem',
+                borderRadius: '10px',
+                border: '1px dashed var(--color-border)',
+                background: '#ffffff',
+                textAlign: 'center'
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '0.85rem',
+                  marginBottom: '0.5rem',
+                  color: 'var(--text-body)'
+                }}
+              >
+                Quét QR để chuyển khoản nhanh cho seller
+              </div>
+              <img
+                src={vietQrUrl}
+                alt="QR chuyển khoản VietQR"
+                style={{
+                  maxWidth: '220px',
+                  width: '100%',
+                  borderRadius: '12px',
+                  border: '1px solid var(--color-border)',
+                  backgroundColor: '#ffffff',
+                  padding: '8px'
+                }}
+              />
+            </div>
+          )}
+        </div>
+      ),
+      confirmText: '✓ Xác nhận đã chuyển',
+      confirmVariant: 'success',
+      onConfirm: async () => {
+        try {
+          const transactionRef = prompt('Nhập mã giao dịch chuyển khoản (tùy chọn):');
+          const adminNote = prompt('Ghi chú (tùy chọn):');
+
+          await api.post(`/admin/transactions/withdrawals/${withdrawal._id}/approve`, {
+            transactionRef: transactionRef || '',
+            adminNote: adminNote || ''
+          });
+
+          onToast?.('✅ Đã duyệt yêu cầu rút tiền', 'success');
+          fetchPendingWithdrawals();
+        } catch (err) {
+          console.error(err);
+          onToast?.(`❌ Không thể duyệt: ${err.response?.data?.error || err.message}`, 'error');
+        }
+      }
+    });
+  }, [onConfirm, onToast, fetchPendingWithdrawals]);
+
+  const handleRejectWithdrawal = useCallback((withdrawal) => {
+    onConfirm?.({
+      title: '❌ Từ chối yêu cầu rút tiền',
+      message: `Bạn chắc chắn muốn từ chối yêu cầu rút ${withdrawal.amount.toLocaleString('vi-VN')} đ của seller ${withdrawal.user?.username || 'Unknown'}?`,
+      confirmText: 'Từ chối',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        try {
+          const adminNote = prompt('Lý do từ chối:');
+
+          if (!adminNote) {
+            onToast?.('Vui lòng nhập lý do từ chối', 'error');
+            return;
+          }
+
+          await api.post(`/admin/transactions/withdrawals/${withdrawal._id}/reject`, {
+            adminNote: adminNote
+          });
+
+          onToast?.('Đã từ chối yêu cầu rút tiền', 'success');
+          fetchPendingWithdrawals();
+        } catch (err) {
+          console.error(err);
+          onToast?.(`Không thể từ chối: ${err.response?.data?.error || err.message}`, 'error');
+        }
+      }
+    });
+  }, [onConfirm, onToast, fetchPendingWithdrawals]);
+
+  if (loading) {
+    return (
+      <div className="admin-loading-state">
+        <div className="loading-spinner-simple"></div>
+        <p>Đang tải dữ liệu rút tiền...</p>
+      </div>
+    );
+  }
+
+  const withdrawals = activeView === 'pending' ? pendingWithdrawals : withdrawalHistory;
+
+  return (
+    <section className="admin-section">
+      <header className="admin-section-header">
+        <div>
+          <h3 className="admin-section-title">
+            💸 Quản lý Rút tiền Seller ({withdrawals.length})
+          </h3>
+          <p className="admin-section-subtitle">
+            Duyệt yêu cầu rút tiền từ ví nội bộ về tài khoản ngân hàng
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            type="button"
+            className={`admin-action-button ${activeView === 'pending' ? 'admin-action-primary' : 'admin-action-ghost'}`}
+            onClick={() => setActiveView('pending')}
+          >
+            Chờ duyệt
+          </button>
+          <button
+            type="button"
+            className={`admin-action-button ${activeView === 'history' ? 'admin-action-primary' : 'admin-action-ghost'}`}
+            onClick={() => setActiveView('history')}
+          >
+            Lịch sử
+          </button>
+          <button
+            type="button"
+            className="admin-refresh-button"
+            onClick={activeView === 'pending' ? fetchPendingWithdrawals : fetchWithdrawalHistory}
+          >
+            ↻ Tải lại
+          </button>
+        </div>
+      </header>
+
+      {withdrawals.length === 0 ? (
+        <div className="admin-empty-state">
+          <p>
+            {activeView === 'pending'
+              ? 'Không có yêu cầu rút tiền nào chờ duyệt'
+              : 'Chưa có lịch sử rút tiền'}
+          </p>
+        </div>
+      ) : (
+        <div className="admin-item-grid">
+          {withdrawals.map((withdrawal, index) => {
+            const withdrawalId = withdrawal._id;
+            const sellerName = withdrawal.user?.username || withdrawal.user?.firstName || 'Unknown';
+            const bankInfo = withdrawal.bankInfo || {};
+            const statusColors = {
+              pending: 'admin-status-pending',
+              completed: 'admin-status-active',
+              rejected: 'admin-status-inactive'
+            };
+            const statusLabels = {
+              pending: '⏳ Chờ duyệt',
+              completed: '✅ Đã chuyển',
+              rejected: '❌ Từ chối'
+            };
+
+            return (
+              <div
+                key={withdrawalId}
+                className="admin-item-card"
+                style={{ animationDelay: `${index * 0.04}s` }}
+              >
+                <div className="admin-item-header">
+                  <div>
+                    <h4 className="admin-item-title">
+                      Seller: {sellerName}
+                    </h4>
+                    <p className="admin-item-subtitle">
+                      Mã YC: {withdrawalId}
+                    </p>
+                  </div>
+                  <span className={`admin-status-badge ${statusColors[withdrawal.status]}`}>
+                    {statusLabels[withdrawal.status]}
+                  </span>
+                </div>
+
+                <div className="admin-item-meta" style={{ flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    padding: '1rem',
+                    background: 'var(--bg-muted)',
+                    borderRadius: '8px',
+                    border: '2px solid var(--color-success)'
+                  }}>
+                    <span style={{ fontWeight: 'bold' }}>Số tiền rút:</span>
+                    <strong style={{ color: 'var(--color-success)', fontSize: '1.2rem' }}>
+                      {withdrawal.amount.toLocaleString('vi-VN')} đ
+                    </strong>
+                  </div>
+
+                  {/* Bank Info */}
+                  <div style={{
+                    padding: '1rem',
+                    background: 'var(--bg-body)',
+                    borderRadius: '8px',
+                    border: '1px solid var(--color-border)'
+                  }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--text-heading)' }}>
+                      📋 Thông tin ngân hàng:
+                    </div>
+                    <div style={{ fontSize: '0.875rem' }}>
+                      <div>Ngân hàng: <strong>{bankInfo.bankName}</strong> ({bankInfo.bankCode})</div>
+                      <div>STK: <strong>{bankInfo.accountNumber}</strong></div>
+                      <div>Tên TK: <strong>{bankInfo.accountName}</strong></div>
+                      {bankInfo.branch && <div>Chi nhánh: {bankInfo.branch}</div>}
+                    </div>
+                  </div>
+
+                  {/* Dates */}
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                    <div>Ngày tạo: {new Date(withdrawal.createdAt).toLocaleString('vi-VN')}</div>
+                    {withdrawal.processedAt && (
+                      <div>Xử lý: {new Date(withdrawal.processedAt).toLocaleString('vi-VN')}</div>
+                    )}
+                  </div>
+
+                  {/* Notes */}
+                  {withdrawal.note && (
+                    <div style={{
+                      padding: '0.75rem',
+                      background: '#fff3cd',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem'
+                    }}>
+                      <strong>Ghi chú từ seller:</strong> {withdrawal.note}
+                    </div>
+                  )}
+
+                  {withdrawal.adminNote && (
+                    <div style={{
+                      padding: '0.75rem',
+                      background: withdrawal.status === 'rejected' ? '#f8d7da' : '#d4edda',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem'
+                    }}>
+                      <strong>Ghi chú admin:</strong> {withdrawal.adminNote}
+                    </div>
+                  )}
+
+                  {withdrawal.transactionRef && (
+                    <div style={{ fontSize: '0.875rem' }}>
+                      <strong>Mã GD:</strong> {withdrawal.transactionRef}
+                    </div>
+                  )}
+                </div>
+
+                {activeView === 'pending' && (
+                  <div className="admin-item-actions">
+                    <button
+                      type="button"
+                      onClick={() => handleApproveWithdrawal(withdrawal)}
+                      className="admin-action-button admin-action-success"
+                    >
+                      ✓ Duyệt
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRejectWithdrawal(withdrawal)}
+                      className="admin-action-button admin-action-danger"
+                    >
+                      ✗ Từ chối
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 
